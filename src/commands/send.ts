@@ -6,7 +6,7 @@ export function registerSendCommand(program: Command): void {
   program
     .command("send")
     .description("Send a new email")
-    .requiredOption("--from <mailbox_id>", "Mailbox ID to send from")
+    .requiredOption("--from <address>", "Email address to send from (any address on your verified domains)")
     .requiredOption("--to <address>", "Recipient email address")
     .requiredOption("--subject <subject>", "Email subject")
     .requiredOption("--body <body>", "Email body")
@@ -16,7 +16,7 @@ export function registerSendCommand(program: Command): void {
       try {
         const client = createClient();
         const payload: Record<string, string> = {
-          mailbox_id: opts.from,
+          from: opts.from,
           to: opts.to,
           subject: opts.subject,
           body: opts.body,

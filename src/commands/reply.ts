@@ -6,7 +6,7 @@ export function registerReplyCommand(program: Command): void {
   program
     .command("reply <thread_id>")
     .description("Reply to a thread")
-    .requiredOption("--from <mailbox_id>", "Mailbox ID to send from")
+    .requiredOption("--from <address>", "Email address to send from (any address on your verified domains)")
     .requiredOption("--to <address>", "Recipient email address")
     .requiredOption("--body <body>", "Reply body")
     .option("--subject <subject>", "Custom subject (default: auto-generated Re: ...)")
@@ -14,7 +14,7 @@ export function registerReplyCommand(program: Command): void {
       try {
         const client = createClient();
         const payload: Record<string, string> = {
-          mailbox_id: opts.from,
+          from: opts.from,
           to: opts.to,
           body: opts.body,
         };

@@ -75,12 +75,82 @@ mailboxes-cli threads archive abc-thread-id
 mailboxes-cli threads star abc-thread-id
 ```
 
-## Output
+## Response Format
 
-All commands output JSON to stdout:
+All commands return:
+
 ```json
-{"ok": true, "data": { ... }}
+{"ok": true, "data": ...}
 {"ok": false, "error": "message"}
+```
+
+### `threads`
+Returns paginated thread summaries:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "threads": [
+      {
+        "thread_id": "2218ac60-439f-4cdb-bdd3-f76e2e7318a8",
+        "subject": "Re: Cost-Effective Custom Caps & Lanyards",
+        "snippet": "Hi there...",
+        "participants": ["ACMEY Co."],
+        "message_count": 7,
+        "unread_count": 6,
+        "starred": false,
+        "latest_received_at": "2026-03-22T19:59:58Z"
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "per_page": 25,
+      "total_pages": 446,
+      "total_count": 446
+    }
+  }
+}
+```
+
+### `mailboxes`
+Returns mailbox list:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "mailboxes": [
+      {
+        "id": 20,
+        "address": "christian@gxb.vc",
+        "display_name": null,
+        "domain_id": 17,
+        "created_at": "2026-02-24T23:17:16Z"
+      }
+    ]
+  }
+}
+```
+
+### `domains`
+Returns domain list:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "domains": [
+      {
+        "id": 17,
+        "name": "gxb.vc",
+        "verified": true,
+        "mailboxes_count": 3,
+        "created_at": "2026-02-24T22:39:32Z"
+      }
+    ]
+  }
+}
 ```
 
 Requires `.env` with `MAILBOXES_API_KEY` and `MAILBOXES_API_URL`. See `.env.example`.
