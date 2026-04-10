@@ -47,7 +47,7 @@ Add a row to the tool index table (alphabetical order):
 
 Add to the `REPOS` array:
 ```bash
-"mailboxes-cli|https://github.com/christiangenco/mailboxes-cli.git|main"
+"mailboxes-cli|https://github.com/gxbvc/mailboxes-cli.git|main"
 ```
 
 Add to the `npmdir` loop in `cmd_clone()` since it's a Node tool.
@@ -59,7 +59,7 @@ cd ~/tools/mailboxes-cli
 git init
 git add -A
 git commit -m "Initial commit: mailboxes-cli"
-gh repo create christiangenco/mailboxes-cli --public --source=. --push
+gh repo create gxbvc/mailboxes-cli --public --source=. --push
 ```
 
 ### 6. Clean up old mailbox-cli stub
@@ -104,4 +104,4 @@ All should return valid `{ok: true, data: ...}` JSON with exit code 0.
 - Every command listed above works
 - `grep mailboxes-cli ~/tools/AGENTS.md` finds the entry
 - `grep mailboxes-cli ~/tools/sync.sh` finds the entry
-- GitHub repo exists at christiangenco/mailboxes-cli
+- GitHub repo exists at gxbvc/mailboxes-cli
