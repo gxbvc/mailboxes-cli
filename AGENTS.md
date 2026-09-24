@@ -1,6 +1,6 @@
 # mailboxes-cli
 
-CLI for managing email across all your domains via the Mailgun Mailboxes app (mailboxes.gen.co). Send, receive, read, search, archive, trash, star, and reply to email from any domain you control — all from the terminal.
+CLI for email, SMS, and iMessage via the Mailgun Mailboxes app (mailboxes.gen.co / mailboxes.gxb.vc). Send, receive, read, search, archive, trash, star, and reply from the terminal.
 
 ## Commands
 
@@ -41,13 +41,21 @@ mailboxes-cli threads move-to-inbox <thread_id>        # Move thread back to inb
 # Messages
 mailboxes-cli messages show <id>                       # Show a single message with full body
 
-# Compose
-mailboxes-cli send --from <mailbox_id> --to "addr" --subject "sub" --body "text"
-mailboxes-cli send --from <mailbox_id> --to "addr" --subject "sub" --body "text" --cc "cc" --bcc "bcc"
+# Compose (email)
+mailboxes-cli send --from "you@domain" --to "addr" --subject "sub" --body "text"
+mailboxes-cli send --from "you@domain" --to "addr" --subject "sub" --body "text" --cc "cc" --bcc "bcc"
 
-# Reply
-mailboxes-cli reply <thread_id> --from <mailbox_id> --to "addr" --body "text"
-mailboxes-cli reply <thread_id> --from <mailbox_id> --to "addr" --body "text" --subject "Re: custom"
+# GXBot iMessage (+1 945-398-8901, mailbox 133). Linux hosts (gxbee) use this, not imessages-cli.
+mailboxes-cli send --mailbox 133 --to "+18176685828" --body "text"
+mailboxes-cli threads --mailbox 133
+mailboxes-cli reply <thread_id> --mailbox 133 --to "+18176685828" --body "text"
+
+# Twilio SMS (+1 817-797-7334, mailbox 127). Green bubble.
+mailboxes-cli send --mailbox 127 --to "+18176685828" --body "text"
+
+# Reply (email)
+mailboxes-cli reply <thread_id> --from "you@domain" --to "addr" --body "text"
+mailboxes-cli reply <thread_id> --from "you@domain" --to "addr" --body "text" --subject "Re: custom"
 ```
 
 ## Examples
@@ -65,10 +73,13 @@ mailboxes-cli threads show 42cc0794-dbc1-49ac-bbc7-4eaec47fdf77
 mailboxes-cli threads --search "invoice"
 
 # Send an email
-mailboxes-cli send --from 1 --to "bob@example.com" --subject "Hello" --body "Hi Bob!"
+mailboxes-cli send --from "christian@gxb.vc" --to "bob@example.com" --subject "Hello" --body "Hi Bob!"
+
+# Send from the GXBot iMessage number (1:1 only; no groups, no attachments)
+mailboxes-cli send --mailbox 133 --to "+18176685828" --body "Hello from gxbee"
 
 # Reply to a thread
-mailboxes-cli reply abc-thread-id --from 1 --to "bob@example.com" --body "Thanks!"
+mailboxes-cli reply abc-thread-id --from "christian@gxb.vc" --to "bob@example.com" --body "Thanks!"
 
 # Archive and star
 mailboxes-cli threads archive abc-thread-id

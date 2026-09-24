@@ -6,18 +6,26 @@ export function registerReplyCommand(program: Command): void {
   program
     .command("reply <thread_id>")
     .description("Reply to a thread")
-    .requiredOption("--from <address>", "Email address to send from (any address on your verified domains)")
-    .requiredOption("--to <address>", "Recipient email address")
+    .option("--mailbox <id>", "Mailbox id (required for SMS/iMessage; e.g. 133)")
+    .option("--from <address>", "From email address (email reply)")
+    .requiredOption("--to <address>", "Recipient email or E.164 phone")
     .requiredOption("--body <body>", "Reply body")
-    .option("--subject <subject>", "Custom subject (default: auto-generated Re: ...)")
+    .option("--subject <subject>", "Custom subject (email only; default: auto-generated Re: ...)")
     .action(async (threadId, opts) => {
       try {
+        if (!opts.mailbox && !opts.from) {
+          error("--mailbox or --from is required");
+        }
         const client = createClient();
         const payload: Record<string, string> = {
-          from: opts.from,
           to: opts.to,
           body: opts.body,
         };
+        if (opts.mailbox) {
+          payload.mailbox_id = String(opts.mailbox);
+        } else if (opts.from) {
+          payload.from = opts.from;
+        }
         if (opts.subject) payload.subject = opts.subject;
         const data = await client.post(`/api/v1/threads/${threadId}/reply`, payload);
         success(data);

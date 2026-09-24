@@ -11,7 +11,7 @@ const program = new Command();
 program
   .name("mailboxes-cli")
   .version("0.1.0")
-  .description("CLI for managing email via Mailgun Mailboxes");
+  .description("CLI for email, SMS, and iMessage via Mailgun Mailboxes");
 
 registerProfileCommand(program);
 registerDomainsCommand(program);
