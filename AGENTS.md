@@ -165,3 +165,14 @@ Returns domain list:
 ```
 
 Requires `.env` with `MAILBOXES_API_KEY` and `MAILBOXES_API_URL`. See `.env.example`.
+
+## Mailbox-key action commands (phase 2b)
+
+`react`, `typing`, `mark-read`, and `capabilities` need a per-mailbox key
+(`mbk_...`) in `MAILBOXES_MAILBOX_KEY` (env or `.env`); the mailbox comes
+from the key, so there is no `--mailbox`. `send` keeps working with the user
+key (`MAILBOXES_API_KEY`) as before; the new send flags `--effect`,
+`--reply-to MESSAGE_ID`, `--voice-note URL` and `--thread THREAD_ID` go
+through the mailbox-key endpoint and exit with an error without that key.
+After pulling on another host, run `npm run build` (bin runs `dist/`, which
+is not committed). Tests: `npm test` (node's built-in runner, stubbed fetch).

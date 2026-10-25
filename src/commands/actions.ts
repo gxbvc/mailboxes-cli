@@ -21,12 +21,12 @@ export function registerActionsCommands(program: Command): void {
     .requiredOption("--reaction <reaction>", "Reaction name or emoji, - prefix to remove")
     .action(async (messageId, opts) => {
       try {
-        const data = await mailboxKeyClient().post(`/api/v1/mailbox/messages/${messageId}/reactions`, {
+        const data = await mailboxKeyClient().post(`/api/v1/mailbox/messages/${encodeURIComponent(messageId)}/reactions`, {
           reaction: opts.reaction,
         });
         success(data);
       } catch (e: any) {
-        error(e.message);
+        error(e.message, e.code);
       }
     });
 
@@ -43,7 +43,7 @@ export function registerActionsCommands(program: Command): void {
         });
         success(data);
       } catch (e: any) {
-        error(e.message);
+        error(e.message, e.code);
       }
     });
 
@@ -56,7 +56,7 @@ export function registerActionsCommands(program: Command): void {
         const data = await mailboxKeyClient().post("/api/v1/mailbox/read", { to: opts.to });
         success(data);
       } catch (e: any) {
-        error(e.message);
+        error(e.message, e.code);
       }
     });
 
@@ -68,7 +68,7 @@ export function registerActionsCommands(program: Command): void {
         const data = await mailboxKeyClient().get("/api/v1/mailbox/capabilities");
         success(data);
       } catch (e: any) {
-        error(e.message);
+        error(e.message, e.code);
       }
     });
 }

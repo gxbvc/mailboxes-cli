@@ -43,6 +43,10 @@ export function registerSendCommand(program: Command): void {
           return;
         }
 
+        if (opts.thread && !mailboxKey) {
+          error("--thread needs a per-mailbox key in MAILBOXES_MAILBOX_KEY");
+          return;
+        }
         if (!opts.mailbox && !opts.from) {
           error("--mailbox or --from is required");
         }
@@ -64,7 +68,7 @@ export function registerSendCommand(program: Command): void {
         const data = await createClient().post("/api/v1/messages", payload);
         success(data);
       } catch (e: any) {
-        error(e.message);
+        error(e.message, e.code);
       }
     });
 }

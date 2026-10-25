@@ -27,6 +27,13 @@ export class MailboxesAPI {
 
     if (!response.ok) {
       const message = json?.error || json?.message || `HTTP ${response.status} ${response.statusText}`;
+      // The server's stable code (provider_rejected, not_texted_first, ...)
+      // rides on the Error so the commands can print it.
+      if (json?.error_code) {
+        const err = new Error(message) as Error & { code?: string };
+        err.code = json.error_code;
+        throw err;
+      }
       throw new Error(message);
     }
 
