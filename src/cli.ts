@@ -6,6 +6,7 @@ import { registerThreadsCommand } from "./commands/threads.js";
 import { registerMessagesCommand } from "./commands/messages.js";
 import { registerSendCommand } from "./commands/send.js";
 import { registerReplyCommand } from "./commands/reply.js";
+import { registerActionsCommands } from "./commands/actions.js";
 
 const program = new Command();
 program
@@ -20,4 +21,5 @@ registerThreadsCommand(program);
 registerMessagesCommand(program);
 registerSendCommand(program);
 registerReplyCommand(program);
+registerActionsCommands(program);
 program.parse();

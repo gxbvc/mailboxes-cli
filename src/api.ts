@@ -1,6 +1,6 @@
 import { getApiKey, getApiUrl } from "./config.js";
 
-class MailboxesAPI {
+export class MailboxesAPI {
   constructor(private baseUrl: string, private apiKey: string) {}
 
   private async request(method: string, path: string, body?: Record<string, any>, params?: Record<string, string>): Promise<any> {
@@ -50,6 +50,6 @@ class MailboxesAPI {
   }
 }
 
-export function createClient(): MailboxesAPI {
-  return new MailboxesAPI(getApiUrl(), getApiKey());
+export function createClient(apiKeyOverride?: string): MailboxesAPI {
+  return new MailboxesAPI(getApiUrl(), apiKeyOverride ?? getApiKey());
 }
