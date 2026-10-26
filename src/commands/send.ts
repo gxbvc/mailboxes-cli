@@ -89,7 +89,7 @@ export function registerSendCommand(program: Command): void {
           error("--subject is required when sending email with --from");
         }
         const payload: Record<string, string> = {
-          to: opts.to.first,
+          to: opts.to[0],
           body: opts.body,
         };
         if (opts.mailbox) {
