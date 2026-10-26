@@ -56,15 +56,16 @@ test("poll refused by the server exits with the error code", async () => {
   globalThis.fetch = (async (url: any, init: any) => {
     calls.push({ url: String(url), method: init?.method || "GET", body: init?.body ? JSON.parse(init.body) : undefined });
     return new Response(JSON.stringify({ ok: false, error_code: "send_refused", error: "A poll needs 2 to 10 options" }),
-                        { status: 422, headers: { "Content-Type" => "application/json" } });
+                        { status: 422, headers: { "Content-Type": "application/json" } });
   }) as typeof fetch;
 
   const originalExit = process.exit;
   let exitCode: number | undefined;
-  process.exit = ((code?: number) => {
+  const stubbedExit = (code?: number) => {
     exitCode = code;
     return undefined as never;
-  }) as typeof process.exit;
+  };
+  process.exit = stubbedExit as typeof process.exit;
   try {
     await run(["poll", "--to", "+15551234567", "--option", "Only"]);
   } finally {
