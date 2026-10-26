@@ -65,6 +65,17 @@ export function registerActCommand(program: Command): void {
           return;
         }
 
+        if (verb === "location") {
+          const threadId = opts.thread;
+          if (!threadId) {
+            error("location reads one thread: act location --thread THREAD_ID");
+            return;
+          }
+          const data = await mailboxKeyClient().get(`/api/v1/mailbox/threads/${encodeURIComponent(threadId)}/location`);
+          success(data);
+          return;
+        }
+
         if (verb === "read" || verb === "typing") {
           const threadId = opts.thread;
           if (!threadId) {

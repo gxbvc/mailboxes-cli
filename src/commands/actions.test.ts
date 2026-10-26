@@ -198,6 +198,12 @@ test("check --to E164 asks the provider about iMessage and RCS", async () => {
   assert.ok(calls[1].url.includes("service=rcs"));
 });
 
+test("act location --thread ID reads the shared locations", async () => {
+  await run(["act", "location", "--thread", "imessage:182:abc"]);
+  assert.equal(calls[0].method, "GET");
+  assert.equal(calls[0].url.endsWith("/api/v1/mailbox/threads/imessage%3A182%3Aabc/location"), true);
+});
+
 // S3: --body with --text sends both.
 test("send --body with --text sends both text parts", async () => {
   await run(["send", "--to", "+15551234567", "--text", "one", "--body", "two"]);
