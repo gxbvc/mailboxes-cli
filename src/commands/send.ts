@@ -65,8 +65,15 @@ export function registerSendCommand(program: Command): void {
             if (opts.link) parts.push({ type: "link", url: opts.link });
             if (opts.contact) parts.push({ type: "contact" });
             if (opts.poll?.length) parts.push({ type: "poll", options: opts.poll });
-            if (opts.mention && parts.length && parts[parts.length - 1].type === "text") {
-              parts[parts.length - 1].mention = { handle: opts.mention };
+            if (opts.mention) {
+              // Attach to the LAST TEXT part; when there is none (an image
+              // last, for example), refuse - never drop.
+              const lastText = [...parts].reverse().find((p) => p.type === "text");
+              if (!lastText) {
+                error("--mention needs a text part to attach to (add --text before --mention)");
+                return;
+              }
+              lastText.mention = { handle: opts.mention };
             }
             payload.parts = parts;
             if (opts.thread) payload.thread_id = String(opts.thread);
@@ -90,9 +97,10 @@ export function registerSendCommand(program: Command): void {
           error("--mailbox or --from is required");
         }
         // Groups need the mailbox-key endpoint; the user-key endpoint sends
-        // to ONE recipient, so two --to values must error, never drop one.
-        if (!mailboxKey && opts.to.length > 1) {
-          error("groups need a per-mailbox key in MAILBOXES_MAILBOX_KEY; the user-key send takes one --to");
+        // to ONE recipient, so two --to values must error, never drop one
+        // (with or without a mailbox key alongside --mailbox).
+        if (opts.to.length > 1 && (opts.mailbox || !mailboxKey)) {
+          error("groups need a per-mailbox key in MAILBOXES_MAILBOX_KEY and no --mailbox");
           return;
         }
         if (!opts.mailbox && !opts.subject) {
