@@ -44,7 +44,7 @@ export function registerSendCommand(program: Command): void {
 
           // Body-only sends keep the old shape ({to, body}): it works with
           // old and new servers alike (review step A, M5).
-          const partsOnly = Boolean(opts.text?.length || opts.image || opts.poll?.length || opts.audio || opts.voiceNote);
+          const partsOnly = Boolean(opts.text?.length || opts.image || opts.poll?.length || opts.audio);
           if (partsOnly) {
             const parts: Array<Record<string, unknown>> = [];
             for (const text of opts.text ?? []) {
@@ -52,19 +52,21 @@ export function registerSendCommand(program: Command): void {
             }
             // --body with --text: an extra text part after the others.
             if (opts.body) parts.push({ type: "text", text: opts.body });
-            for (const url of opts.image ?? []) {
-              parts.push({ type: "image", url });
-            }
+            if (opts.image) parts.push({ type: "image", url: opts.image });
             if (opts.audio) parts.push({ type: "audio", url: opts.audio, voice_note: true });
-            if (opts.voiceNote) parts.push({ type: "audio", url: opts.voiceNote, voice_note: true });
             if (opts.poll?.length) parts.push({ type: "poll", options: opts.poll });
             payload.parts = parts;
             if (opts.thread) payload.thread_id = String(opts.thread);
             if (opts.effect) payload.effect = String(opts.effect);
             if (opts.replyTo) payload.reply_to = String(opts.replyTo);
           } else {
+            // --body with --effect/--reply-to/--voice-note: the legacy field
+            // names, read by old and new servers alike (R2-M2, R2-S1).
             payload.body = opts.body;
             if (opts.thread) payload.thread_id = String(opts.thread);
+            if (opts.effect) payload.send_style = String(opts.effect);
+            if (opts.replyTo) payload.reply_to_message_id = String(opts.replyTo);
+            if (opts.voiceNote) payload.voice_note_url = String(opts.voiceNote);
           }
           const data = await mailboxKeyClient().post("/api/v1/mailbox/messages", payload);
           success(data);

@@ -83,17 +83,24 @@ test("send flags ride on the mailbox-key endpoint", async () => {
   ]);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url.endsWith("/api/v1/mailbox/messages"), true);
-  // The new shape: everything is parts and fields.
+  // --body with the option flags posts the LEGACY field names, read by old
+  // and new servers alike (R2-M2): the option is never dropped.
   assert.deepEqual(calls[0].body, {
     to: "+15551234567",
-    parts: [
-      { type: "text", text: "hi" },
-      { type: "audio", url: "https://example.com/note.caf", voice_note: true },
-    ],
-    effect: "confetti",
-    reply_to: "45",
+    body: "hi",
+    send_style: "confetti",
+    reply_to_message_id: "45",
+    voice_note_url: "https://example.com/note.caf",
   });
   assert.equal(calls[0].authorization, "Bearer mbk-test-key");
+
+  // R2-M1: --image is one URL, and it posts an image PART.
+  await run(["send", "--to", "+15551234567", "--image", "https://example.com/pic.png"]);
+  assert.equal(calls[1].url.endsWith("/api/v1/mailbox/messages"), true);
+  assert.deepEqual(calls[1].body, {
+    to: "+15551234567",
+    parts: [{ type: "image", url: "https://example.com/pic.png" }],
+  });
 });
 
 // M4: the act command parses and posts the right shape.
@@ -108,6 +115,11 @@ test("act MESSAGE_ID react love posts a message action", async () => {
 test("act MESSAGE_ID unreact --reaction love posts the removal", async () => {
   await run(["act", "14676", "unreact", "--reaction", "love"]);
   assert.equal(calls[0].url.endsWith("/api/v1/mailbox/messages/14676/actions"), true);
+  assert.deepEqual(calls[0].body, { type: "unreact", reaction: "love" });
+});
+
+test("act MESSAGE_ID unreact love accepts the reaction positionally (R2-N3)", async () => {
+  await run(["act", "14676", "unreact", "love"]);
   assert.deepEqual(calls[0].body, { type: "unreact", reaction: "love" });
 });
 

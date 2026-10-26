@@ -11,7 +11,7 @@ import { mailboxKeyClient } from "./actions.js";
 export function registerActCommand(program: Command): void {
   program
     .command("act [target] [verb] [arg]")
-    .description("Act on a message or thread (mailbox key): act MESSAGE_ID react love | act unreact MESSAGE_ID --reaction R | act read --thread ID | act typing --thread ID [--stop]")
+    .description("Act on a message or thread (mailbox key): act MESSAGE_ID react love | act MESSAGE_ID unreact --reaction love | act read --thread ID | act typing --thread ID [--stop]")
     .option("--thread <thread_id>", "The thread id (required for read and typing)")
     .option("--reaction <reaction>", "The reaction to remove (unreact)")
     .option("--stop", "Stop the typing indicator")
@@ -29,9 +29,12 @@ export function registerActCommand(program: Command): void {
             error("usage: act MESSAGE_ID react love");
             return;
           }
-          const payload = verb === "unreact"
-            ? { type: "unreact", reaction: opts.reaction }
-            : { type: "react", reaction: arg };
+          const reaction = verb === "unreact" ? (opts.reaction ?? arg) : arg;
+          if (!reaction) {
+            error("unreact needs the reaction name: act MESSAGE_ID unreact --reaction love");
+            return;
+          }
+          const payload = { type: verb, reaction };
           const data = await mailboxKeyClient().post(`/api/v1/mailbox/messages/${encodeURIComponent(target)}/actions`, payload);
           success(data);
           return;
