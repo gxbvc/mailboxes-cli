@@ -15,6 +15,7 @@ export function registerSendCommand(program: Command): void {
     .option("--text <text>", "Text part (repeat; joins into the message)", (v: string, prev: string[]) => (prev ?? []).concat([v]))
     .option("--image <url>", "Image part url (one per send for now)")
     .option("--audio <url>", "Audio (voice note) part url")
+    .option("--mention <handle>", "Mention one group member from a text part (Linq, group only)")
     .option("--sticker <url>", "Sticker part url (Linq; its own message, peelable)")
     .option("--link <url>", "Link part url (Linq; rich preview card, must be alone)")
     .option("--contact", "Share this line's contact card (Linq; the card comes from the mailbox)")
@@ -31,7 +32,7 @@ export function registerSendCommand(program: Command): void {
         // per-mailbox-key endpoint, where the mailbox comes from the key
         // (MAILBOXES_MAILBOX_KEY). The user-key endpoint does not carry them.
         const mailboxKey = process.env.MAILBOXES_MAILBOX_KEY;
-        const wantsParts = Boolean(opts.text?.length || opts.image || opts.poll?.length || opts.audio || opts.voiceNote || opts.effect || opts.replyTo || opts.sticker || opts.link || opts.contact);
+        const wantsParts = Boolean(opts.text?.length || opts.image || opts.poll?.length || opts.audio || opts.voiceNote || opts.effect || opts.replyTo || opts.sticker || opts.link || opts.contact || opts.mention);
         if (wantsParts && !mailboxKey) {
           error("parts/effects/polls need a per-mailbox key in MAILBOXES_MAILBOX_KEY");
           return;
@@ -64,6 +65,9 @@ export function registerSendCommand(program: Command): void {
             if (opts.link) parts.push({ type: "link", url: opts.link });
             if (opts.contact) parts.push({ type: "contact" });
             if (opts.poll?.length) parts.push({ type: "poll", options: opts.poll });
+            if (opts.mention && parts.length && parts[parts.length - 1].type === "text") {
+              parts[parts.length - 1].mention = { handle: opts.mention };
+            }
             payload.parts = parts;
             if (opts.thread) payload.thread_id = String(opts.thread);
             if (opts.effect) payload.effect = String(opts.effect);

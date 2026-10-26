@@ -272,6 +272,13 @@ test("send with two --to values posts a group start", async () => {
   });
 });
 
+test("--mention attaches to the last text part", async () => {
+  await run(["send", "--to", "+15551234567", "--text", "hey", "--mention", "+15550002222"]);
+  assert.deepEqual(calls[0].body.parts, [
+    { type: "text", text: "hey", mention: { handle: "+15550002222" } },
+  ]);
+});
+
 test("act location --thread ID reads the shared locations", async () => {
   await run(["act", "location", "--thread", "imessage:182:abc"]);
   assert.equal(calls[0].method, "GET");
