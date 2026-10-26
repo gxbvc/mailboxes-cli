@@ -14,28 +14,53 @@ export function registerActCommand(program: Command): void {
     .description("Act on a message or thread (mailbox key): act MESSAGE_ID react love | act MESSAGE_ID unreact --reaction love | act read --thread ID | act typing --thread ID [--stop]")
     .option("--thread <thread_id>", "The thread id (required for read and typing)")
     .option("--reaction <reaction>", "The reaction to remove (unreact)")
+    .option("--text <text>", "The new text (edit)")
     .option("--stop", "Stop the typing indicator")
     .action(async (target, verb, arg, opts) => {
       try {
         verb = verb ?? target;
-        const messageAction = verb === "react" || verb === "unreact";
+        const messageAction = verb === "react" || verb === "unreact" || verb === "edit" || verb === "unsend";
 
         if (messageAction) {
           if (opts.thread) {
-            error("react acts on a message: act MESSAGE_ID react love");
+            error(`${verb} acts on a message: act MESSAGE_ID ${verb} ...`);
             return;
           }
           if (!target) {
-            error("usage: act MESSAGE_ID react love");
+            error(`usage: act MESSAGE_ID ${verb} ...`);
             return;
           }
-          const reaction = verb === "unreact" ? (opts.reaction ?? arg) : arg;
-          if (!reaction) {
-            error("unreact needs the reaction name: act MESSAGE_ID unreact --reaction love");
-            return;
+          let payload: Record<string, unknown>;
+          if (verb === "edit") {
+            if (!opts.text) {
+              error("edit needs the new text: act MESSAGE_ID edit --text ...");
+              return;
+            }
+            payload = { type: "edit", text: opts.text };
+          } else if (verb === "unsend") {
+            payload = { type: "unsend" };
+          } else {
+            const reaction = verb === "unreact" ? (opts.reaction ?? arg) : arg;
+            if (!reaction) {
+              error("unreact needs the reaction name: act MESSAGE_ID unreact --reaction love");
+              return;
+            }
+            payload = { type: verb, reaction };
           }
-          const payload = { type: verb, reaction };
           const data = await mailboxKeyClient().post(`/api/v1/mailbox/messages/${encodeURIComponent(target)}/actions`, payload);
+          success(data);
+          return;
+        }
+
+        if (verb === "location-request") {
+          const threadId = opts.thread;
+          if (!threadId) {
+            error("location-request acts on a thread: act location-request --thread THREAD_ID");
+            return;
+          }
+          const data = await mailboxKeyClient().post(`/api/v1/mailbox/threads/${encodeURIComponent(threadId)}/actions`, {
+            type: "location_request",
+          });
           success(data);
           return;
         }

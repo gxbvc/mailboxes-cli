@@ -71,4 +71,20 @@ export function registerActionsCommands(program: Command): void {
         error(e.message, e.code);
       }
     });
+
+  program
+    .command("check")
+    .description("Check iMessage/RCS availability for one recipient (mailbox key, Linq)")
+    .requiredOption("--to <e164>", "Recipient E.164 phone (or email for imessage)")
+    .option("--service <service>", "imessage or rcs (default: both)")
+    .action(async (opts) => {
+      try {
+        const params: Record<string, string> = { to: opts.to };
+        if (opts.service) params.service = String(opts.service);
+        const data = await mailboxKeyClient().get("/api/v1/mailbox/capabilities/check", params);
+        success(data);
+      } catch (e: any) {
+        error(e.message, e.code);
+      }
+    });
 }

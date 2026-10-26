@@ -189,6 +189,15 @@ test("--voice-note with --text becomes an audio part", async () => {
   ]);
 });
 
+test("check --to E164 asks the provider about iMessage and RCS", async () => {
+  await run(["check", "--to", "+15551234567"]);
+  assert.equal(calls[0].url.endsWith("/api/v1/mailbox/capabilities/check?to=%2B15551234567"), true);
+  assert.equal(calls[0].authorization, "Bearer mbk-test-key");
+
+  await run(["check", "--to", "+15551234567", "--service", "rcs"]);
+  assert.ok(calls[1].url.includes("service=rcs"));
+});
+
 // S3: --body with --text sends both.
 test("send --body with --text sends both text parts", async () => {
   await run(["send", "--to", "+15551234567", "--text", "one", "--body", "two"]);
