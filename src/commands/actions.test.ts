@@ -161,13 +161,9 @@ test("act ID edit --text posts the edit", async () => {
   assert.deepEqual(calls[0].body, { type: "edit", text: "corrected" });
 });
 
-test("act ID delete_record posts delete_record", async () => {
-  await run(["act", "14676", "delete_record"]);
-  assert.deepEqual(calls[0].body, { type: "delete_record" });
-});
-
-// 4: unsend refuses with the explanation and posts nothing.
-test("act ID unsend refuses and posts nothing", async () => {
+// Removed (Christian, 08:11): unsend AND delete_record refuse with the
+// explanation and post nothing.
+test("act ID unsend and delete_record refuse and post nothing", async () => {
   const originalExit = process.exit;
   let exitCode: number | undefined;
   const stubbedExit = (code?: number) => {
@@ -177,6 +173,7 @@ test("act ID unsend refuses and posts nothing", async () => {
   process.exit = stubbedExit as typeof process.exit;
   try {
     await run(["act", "14676", "unsend"]);
+    await run(["act", "14676", "delete_record"]);
   } finally {
     process.exit = originalExit;
   }
