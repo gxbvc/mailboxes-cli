@@ -19,7 +19,12 @@ export function registerActCommand(program: Command): void {
     .action(async (target, verb, arg, opts) => {
       try {
         verb = verb ?? target;
-        const messageAction = verb === "react" || verb === "unreact" || verb === "edit" || verb === "unsend" || verb === "delete_record";
+        if (verb === "unsend") {
+          // Linq has no unsend: refuse with the real thing (Misc decision b).
+          error("iMessage unsend is not available on this line. delete_record removes the message from Linq's records only; the person still sees it: act MESSAGE_ID delete_record");
+          return;
+        }
+        const messageAction = verb === "react" || verb === "unreact" || verb === "edit" || verb === "delete_record";
 
         if (messageAction) {
           if (opts.thread) {
@@ -37,9 +42,8 @@ export function registerActCommand(program: Command): void {
               return;
             }
             payload = { type: "edit", text: opts.text };
-          } else if (verb === "unsend" || verb === "delete_record") {
-            // The server renames unsend: it removes Linq's stored copy; the
-            // person still sees the message.
+          } else if (verb === "delete_record") {
+            // Removes Linq's stored copy; the person still sees the message.
             payload = { type: "delete_record" };
           } else {
             const reaction = verb === "unreact" ? (opts.reaction ?? arg) : arg;

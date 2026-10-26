@@ -130,6 +130,66 @@ test("act MESSAGE_ID unreact --reaction love posts the removal", async () => {
   assert.deepEqual(calls[0].body, { type: "unreact", reaction: "love" });
 });
 
+// 5: posted-JSON tests for the step B flags and verbs.
+test("send --sticker posts a sticker part", async () => {
+  await run(["send", "--to", "+15551234567", "--sticker", "https://files.gxb.vc/gxbot/linq-demo-33279f337106/demo-image.png"]);
+  assert.deepEqual(calls[0].body, {
+    to: "+15551234567",
+    parts: [{ type: "sticker", url: "https://files.gxb.vc/gxbot/linq-demo-33279f337106/demo-image.png" }],
+  });
+});
+
+test("send --link posts a link part", async () => {
+  await run(["send", "--to", "+15551234567", "--link", "https://gxb.vc"]);
+  assert.deepEqual(calls[0].body, {
+    to: "+15551234567",
+    parts: [{ type: "link", url: "https://gxb.vc" }],
+  });
+});
+
+test("send --contact posts a contact part with no caller content", async () => {
+  await run(["send", "--to", "+15551234567", "--contact"]);
+  assert.deepEqual(calls[0].body, {
+    to: "+15551234567",
+    parts: [{ type: "contact" }],
+  });
+});
+
+test("act ID edit --text posts the edit", async () => {
+  await run(["act", "14676", "edit", "--text", "corrected"]);
+  assert.equal(calls[0].url.endsWith("/api/v1/mailbox/messages/14676/actions"), true);
+  assert.deepEqual(calls[0].body, { type: "edit", text: "corrected" });
+});
+
+test("act ID delete_record posts delete_record", async () => {
+  await run(["act", "14676", "delete_record"]);
+  assert.deepEqual(calls[0].body, { type: "delete_record" });
+});
+
+// 4: unsend refuses with the explanation and posts nothing.
+test("act ID unsend refuses and posts nothing", async () => {
+  const originalExit = process.exit;
+  let exitCode: number | undefined;
+  const stubbedExit = (code?: number) => {
+    exitCode = code;
+    return undefined as never;
+  };
+  process.exit = stubbedExit as typeof process.exit;
+  try {
+    await run(["act", "14676", "unsend"]);
+  } finally {
+    process.exit = originalExit;
+  }
+  assert.equal(exitCode, 1);
+  assert.equal(calls.length, 0);
+});
+
+test("act location-request --thread ID posts the request", async () => {
+  await run(["act", "location-request", "--thread", "imessage:182:abc"]);
+  assert.equal(calls[0].url.endsWith("/api/v1/mailbox/threads/imessage%3A182%3Aabc/actions"), true);
+  assert.deepEqual(calls[0].body, { type: "location_request" });
+});
+
 test("act MESSAGE_ID unreact love accepts the reaction positionally (R2-N3)", async () => {
   await run(["act", "14676", "unreact", "love"]);
   assert.deepEqual(calls[0].body, { type: "unreact", reaction: "love" });
