@@ -108,8 +108,8 @@ test("send flags ride on the mailbox-key endpoint", async () => {
 
   // R2-M1: --image is one URL, and it posts an image PART.
   await run(["send", "--to", "+15551234567", "--image", "https://example.com/pic.png"]);
-  assert.equal(calls[1].url.endsWith("/api/v1/mailbox/messages"), true);
-  assert.deepEqual(calls[1].body, {
+  assert.equal(calls[2].url.endsWith("/api/v1/mailbox/messages"), true);
+  assert.deepEqual(calls[2].body, {
     to: "+15551234567",
     parts: [{ type: "image", url: "https://example.com/pic.png" }],
   });
