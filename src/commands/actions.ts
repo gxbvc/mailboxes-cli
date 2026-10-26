@@ -73,39 +73,6 @@ export function registerActionsCommands(program: Command): void {
     });
 
   program
-    .command("blocked")
-    .description("The account-wide blocklist (mailbox key, Linq)")
-    .option("--add", "Block one handle")
-    .option("--remove", "Unblock one handle")
-    .option("--handle <handle>", "The handle (E.164, email, short code)")
-    .option("--reason <reason>", "A note for the blocklist entry")
-    .action(async (opts, command) => {
-      try {
-        const client = mailboxKeyClient();
-        if (opts.add) {
-          if (!opts.handle) {
-            error("blocked add needs --handle");
-            return;
-          }
-          const data = await client.post("/api/v1/mailbox/blocked", { handle: opts.handle, reason: opts.reason });
-          success(data);
-        } else if (opts.remove) {
-          if (!opts.handle) {
-            error("blocked remove needs --handle");
-            return;
-          }
-          const data = await client.delete(`/api/v1/mailbox/blocked/${encodeURIComponent(opts.handle)}`);
-          success(data);
-        } else {
-          const data = await client.get("/api/v1/mailbox/blocked");
-          success(data);
-        }
-      } catch (e: any) {
-        error(e.message, e.code);
-      }
-    });
-
-  program
     .command("health")
     .description("This line's status and reputation (mailbox key, Linq)")
     .action(async () => {

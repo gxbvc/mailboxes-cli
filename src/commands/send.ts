@@ -89,6 +89,12 @@ export function registerSendCommand(program: Command): void {
         if (!hasTarget) {
           error("--mailbox or --from is required");
         }
+        // Groups need the mailbox-key endpoint; the user-key endpoint sends
+        // to ONE recipient, so two --to values must error, never drop one.
+        if (!mailboxKey && opts.to.length > 1) {
+          error("groups need a per-mailbox key in MAILBOXES_MAILBOX_KEY; the user-key send takes one --to");
+          return;
+        }
         if (!opts.mailbox && !opts.subject) {
           error("--subject is required when sending email with --from");
         }

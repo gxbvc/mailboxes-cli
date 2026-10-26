@@ -279,6 +279,20 @@ test("--mention attaches to the last text part", async () => {
   ]);
 });
 
+test("health gets the line health", async () => {
+  await run(["health"]);
+  assert.equal(calls[0].url.endsWith("/api/v1/mailbox/health"), true);
+  assert.equal(calls[0].method, "GET");
+  assert.equal(calls[0].authorization, "Bearer mbk-test-key");
+});
+
+test("--mention attaches to the last text part", async () => {
+  await run(["send", "--to", "+15551234567", "--text", "hey", "--mention", "+15550002222"]);
+  assert.deepEqual(calls[0].body.parts, [
+    { type: "text", text: "hey", mention: { handle: "+15550002222" } },
+  ]);
+});
+
 test("act location --thread ID reads the shared locations", async () => {
   await run(["act", "location", "--thread", "imessage:182:abc"]);
   assert.equal(calls[0].method, "GET");
@@ -302,9 +316,24 @@ test("send without flags and with both keys keeps the user-key path", async () =
   assert.equal(calls[0].authorization, "Bearer user-key-for-tests");
 });
 
-test("send with two --to values on the user-key path takes the first (no groups there)", async () => {
-  await run(["send", "--mailbox", "133", "--to", "+15551234567", "--to", "+15550002222", "--body", "hi"]);
-  assert.deepEqual(calls[0].body, { to: "+15551234567", body: "hi", mailbox_id: "133" });
+// Security's CLI note: two --to on the USER-key path errors, never drops one.
+test("send with two --to values on the user-key path errors", async () => {
+  delete process.env.MAILBOXES_MAILBOX_KEY;
+  const originalExit = process.exit;
+  let exitCode: number | undefined;
+  const stubbedExit = (code?: number) => {
+    exitCode = code;
+    return undefined as never;
+  };
+  process.exit = stubbedExit as typeof process.exit;
+  try {
+    await run(["send", "--mailbox", "133", "--to", "+15551234567", "--to", "+15550002222", "--body", "hi"]);
+  } finally {
+    process.exit = originalExit;
+  }
+  assert.equal(exitCode, 1);
+  assert.equal(calls.length, 0);
+  process.env.MAILBOXES_MAILBOX_KEY = "mbk-test-key";
 });
 
 test("send flags without a mailbox key is an error, not a silent drop", async () => {
