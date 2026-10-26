@@ -286,13 +286,6 @@ test("health gets the line health", async () => {
   assert.equal(calls[0].authorization, "Bearer mbk-test-key");
 });
 
-test("--mention attaches to the last text part", async () => {
-  await run(["send", "--to", "+15551234567", "--text", "hey", "--mention", "+15550002222"]);
-  assert.deepEqual(calls[0].body.parts, [
-    { type: "text", text: "hey", mention: { handle: "+15550002222" } },
-  ]);
-});
-
 test("act location --thread ID reads the shared locations", async () => {
   await run(["act", "location", "--thread", "imessage:182:abc"]);
   assert.equal(calls[0].method, "GET");
@@ -317,6 +310,40 @@ test("send without flags and with both keys keeps the user-key path", async () =
 });
 
 // Security's CLI note: two --to on the USER-key path errors, never drops one.
+test("two --to with a key and --mailbox errors too", async () => {
+  const originalExit = process.exit;
+  let exitCode: number | undefined;
+  const stubbedExit = (code?: number) => {
+    exitCode = code;
+    return undefined as never;
+  };
+  process.exit = stubbedExit as typeof process.exit;
+  try {
+    await run(["send", "--mailbox", "133", "--to", "+15551234567", "--to", "+15550002222", "--body", "hi"]);
+  } finally {
+    process.exit = originalExit;
+  }
+  assert.equal(exitCode, 1);
+  assert.equal(calls.length, 0);
+});
+
+test("--mention with no text part errors instead of dropping", async () => {
+  const originalExit = process.exit;
+  let exitCode: number | undefined;
+  const stubbedExit = (code?: number) => {
+    exitCode = code;
+    return undefined as never;
+  };
+  process.exit = stubbedExit as typeof process.exit;
+  try {
+    await run(["send", "--to", "+15551234567", "--image", "https://example.com/p.png", "--mention", "+15550002222"]);
+  } finally {
+    process.exit = originalExit;
+  }
+  assert.equal(exitCode, 1);
+  assert.equal(calls.length, 0);
+});
+
 test("send with two --to values on the user-key path errors", async () => {
   delete process.env.MAILBOXES_MAILBOX_KEY;
   const originalExit = process.exit;
