@@ -9,7 +9,7 @@ export function registerSendCommand(program: Command): void {
     .description("Send email, SMS, or iMessage")
     .option("--mailbox <id>", "Mailbox id (user key; SMS/iMessage; e.g. 133)")
     .option("--from <address>", "From email address (email send)")
-    .requiredOption("--to <address>", "Recipient email or E.164 phone")
+    .requiredOption("--to <address>", "Recipient email, E.164 phone; repeat for a group start (Linq)", (v: string, prev: string[]) => (prev ?? []).concat([v]))
     .option("--subject <subject>", "Email subject (email only)")
     .option("--body <body>", "Message body (shortcut for one text part)")
     .option("--text <text>", "Text part (repeat; joins into the message)", (v: string, prev: string[]) => (prev ?? []).concat([v]))
@@ -43,7 +43,9 @@ export function registerSendCommand(program: Command): void {
         }
         const hasTarget = Boolean(opts.mailbox || opts.from);
         if (wantsParts || (mailboxKey && !hasTarget)) {
-          const payload: Record<string, unknown> = { to: opts.to };
+          // One handle: a string (a direct send). Two or more: the array
+          // starts a group.
+          const payload: Record<string, unknown> = { to: opts.to.length === 1 ? opts.to[0] : opts.to };
 
           // Body-only sends keep the old shape ({to, body}): it works with
           // old and new servers alike (review step A, M5).
@@ -87,7 +89,7 @@ export function registerSendCommand(program: Command): void {
           error("--subject is required when sending email with --from");
         }
         const payload: Record<string, string> = {
-          to: opts.to,
+          to: opts.to.first,
           body: opts.body,
         };
         if (opts.mailbox) {

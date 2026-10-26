@@ -255,6 +255,23 @@ test("check --to E164 asks the provider about iMessage and RCS", async () => {
   assert.ok(calls[1].url.includes("service=rcs"));
 });
 
+test("act rename and act leave post the group thread actions", async () => {
+  await run(["act", "rename", "--thread", "imessage:182:group:abc", "--name", "The Group"]);
+  assert.equal(calls[0].url.endsWith("/api/v1/mailbox/threads/imessage%3A182%3Agroup%3Aabc/actions"), true);
+  assert.deepEqual(calls[0].body, { type: "rename", name: "The Group" });
+
+  await run(["act", "leave", "--thread", "imessage:182:group:abc"]);
+  assert.deepEqual(calls[1].body, { type: "leave" });
+});
+
+test("send with two --to values posts a group start", async () => {
+  await run(["send", "--to", "+15551234567", "--to", "+15550002222", "--text", "welcome"]);
+  assert.deepEqual(calls[0].body, {
+    to: ["+15551234567", "+15550002222"],
+    parts: [{ type: "text", text: "welcome" }],
+  });
+});
+
 test("act location --thread ID reads the shared locations", async () => {
   await run(["act", "location", "--thread", "imessage:182:abc"]);
   assert.equal(calls[0].method, "GET");
@@ -276,6 +293,11 @@ test("send without flags and with both keys keeps the user-key path", async () =
   assert.equal(calls[0].url.endsWith("/api/v1/messages"), true);
   assert.deepEqual(calls[0].body, { to: "+15551234567", body: "hi", mailbox_id: "133" });
   assert.equal(calls[0].authorization, "Bearer user-key-for-tests");
+});
+
+test("send with two --to values on the user-key path takes the first (no groups there)", async () => {
+  await run(["send", "--mailbox", "133", "--to", "+15551234567", "--to", "+15550002222", "--body", "hi"]);
+  assert.deepEqual(calls[0].body, { to: "+15551234567", body: "hi", mailbox_id: "133" });
 });
 
 test("send flags without a mailbox key is an error, not a silent drop", async () => {

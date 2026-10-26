@@ -15,6 +15,7 @@ export function registerActCommand(program: Command): void {
     .option("--thread <thread_id>", "The thread id (required for read and typing)")
     .option("--reaction <reaction>", "The reaction to remove (unreact)")
     .option("--text <text>", "The new text (edit)")
+    .option("--name <name>", "The new group name (rename)")
     .option("--stop", "Stop the typing indicator")
     .action(async (target, verb, arg, opts) => {
       try {
@@ -76,6 +77,32 @@ export function registerActCommand(program: Command): void {
             return;
           }
           const data = await mailboxKeyClient().get(`/api/v1/mailbox/threads/${encodeURIComponent(threadId)}/location`);
+          success(data);
+          return;
+        }
+
+        if (verb === "rename") {
+          const threadId = opts.thread;
+          if (!threadId || !opts.name) {
+            error("rename acts on a group thread: act rename --thread THREAD_ID --name \"The Name\"");
+            return;
+          }
+          const data = await mailboxKeyClient().post(`/api/v1/mailbox/threads/${encodeURIComponent(threadId)}/actions`, {
+            type: "rename", name: opts.name,
+          });
+          success(data);
+          return;
+        }
+
+        if (verb === "leave") {
+          const threadId = opts.thread;
+          if (!threadId) {
+            error("leave acts on a group thread: act leave --thread THREAD_ID");
+            return;
+          }
+          const data = await mailboxKeyClient().post(`/api/v1/mailbox/threads/${encodeURIComponent(threadId)}/actions`, {
+            type: "leave",
+          });
           success(data);
           return;
         }
