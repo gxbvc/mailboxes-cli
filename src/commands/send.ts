@@ -13,8 +13,8 @@ export function registerSendCommand(program: Command): void {
     .option("--subject <subject>", "Email subject (email only)")
     .option("--body <body>", "Message body (shortcut for one text part)")
     .option("--text <text>", "Text part (repeat; joins into the message)", (v: string, prev: string[]) => (prev ?? []).concat([v]))
-    .option("--image <url>", "Image part url (repeat)", (v: string, prev: string[]) => (prev ?? []).concat([v]))
-    .option("--audio <url>", "Audio (voice note) part url", undefined)
+    .option("--image <url>", "Image part url (one per send for now)")
+    .option("--audio <url>", "Audio (voice note) part url")
     .option("--poll <text>", "Poll option (repeat: --poll A --poll B sends a poll)", (v: string, prev: string[]) => (prev ?? []).concat([v]))
     .option("--cc <cc>", "CC address (email only)")
     .option("--bcc <bcc>", "BCC address (email only)")
@@ -28,30 +28,44 @@ export function registerSendCommand(program: Command): void {
         // per-mailbox-key endpoint, where the mailbox comes from the key
         // (MAILBOXES_MAILBOX_KEY). The user-key endpoint does not carry them.
         const mailboxKey = process.env.MAILBOXES_MAILBOX_KEY;
-        const wantsParts = Boolean(opts.text?.length || opts.image?.length || opts.poll?.length || opts.audio || opts.voiceNote || opts.effect || opts.replyTo);
+        const wantsParts = Boolean(opts.text?.length || opts.image || opts.poll?.length || opts.audio || opts.voiceNote || opts.effect || opts.replyTo);
         if (wantsParts && !mailboxKey) {
           error("parts/effects/polls need a per-mailbox key in MAILBOXES_MAILBOX_KEY");
           return;
         }
+        // --thread always needs the mailbox-key endpoint.
+        if (opts.thread && !mailboxKey) {
+          error("--thread needs a per-mailbox key in MAILBOXES_MAILBOX_KEY");
+          return;
+        }
         const hasTarget = Boolean(opts.mailbox || opts.from);
         if (wantsParts || (mailboxKey && !hasTarget)) {
-          const parts: Array<Record<string, unknown>> = [];
-          for (const text of opts.text ?? []) {
-            parts.push({ type: "text", text });
-          }
-          for (const url of opts.image ?? []) {
-            parts.push({ type: "image", url });
-          }
-          if (opts.audio) parts.push({ type: "audio", url: opts.audio, voice_note: true });
-          if (opts.voiceNote) parts.push({ type: "audio", url: opts.voiceNote, voice_note: true });
-          if (opts.poll?.length) parts.push({ type: "poll", options: opts.poll });
-          // The body shortcut: one text part.
-          if (opts.body && !opts.text?.length) parts.unshift({ type: "text", text: opts.body });
+          const payload: Record<string, unknown> = { to: opts.to };
 
-          const payload: Record<string, unknown> = { to: opts.to, parts };
-          if (opts.thread) payload.thread_id = String(opts.thread);
-          if (opts.effect) payload.effect = String(opts.effect);
-          if (opts.replyTo) payload.reply_to = String(opts.replyTo);
+          // Body-only sends keep the old shape ({to, body}): it works with
+          // old and new servers alike (review step A, M5).
+          const partsOnly = Boolean(opts.text?.length || opts.image || opts.poll?.length || opts.audio || opts.voiceNote);
+          if (partsOnly) {
+            const parts: Array<Record<string, unknown>> = [];
+            for (const text of opts.text ?? []) {
+              parts.push({ type: "text", text });
+            }
+            // --body with --text: an extra text part after the others.
+            if (opts.body) parts.push({ type: "text", text: opts.body });
+            for (const url of opts.image ?? []) {
+              parts.push({ type: "image", url });
+            }
+            if (opts.audio) parts.push({ type: "audio", url: opts.audio, voice_note: true });
+            if (opts.voiceNote) parts.push({ type: "audio", url: opts.voiceNote, voice_note: true });
+            if (opts.poll?.length) parts.push({ type: "poll", options: opts.poll });
+            payload.parts = parts;
+            if (opts.thread) payload.thread_id = String(opts.thread);
+            if (opts.effect) payload.effect = String(opts.effect);
+            if (opts.replyTo) payload.reply_to = String(opts.replyTo);
+          } else {
+            payload.body = opts.body;
+            if (opts.thread) payload.thread_id = String(opts.thread);
+          }
           const data = await mailboxKeyClient().post("/api/v1/mailbox/messages", payload);
           success(data);
           return;

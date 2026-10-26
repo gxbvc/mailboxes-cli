@@ -11,6 +11,7 @@ process.env.MAILBOXES_MAILBOX_KEY = "mbk-test-key";
 
 import { registerActionsCommands } from "./actions.js";
 import { registerSendCommand } from "./send.js";
+import { registerActCommand } from "./act.js";
 
 type Call = { url: string; method: string; body?: any; authorization?: string };
 let calls: Call[] = [];
@@ -32,6 +33,7 @@ function program(): Command {
   const program = new Command();
   registerActionsCommands(program);
   registerSendCommand(program);
+  registerActCommand(program);
   return program;
 }
 
@@ -92,6 +94,73 @@ test("send flags ride on the mailbox-key endpoint", async () => {
     reply_to: "45",
   });
   assert.equal(calls[0].authorization, "Bearer mbk-test-key");
+});
+
+// M4: the act command parses and posts the right shape.
+test("act MESSAGE_ID react love posts a message action", async () => {
+  await run(["act", "14676", "react", "love"]);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url.endsWith("/api/v1/mailbox/messages/14676/actions"), true);
+  assert.deepEqual(calls[0].body, { type: "react", reaction: "love" });
+  assert.equal(calls[0].authorization, "Bearer mbk-test-key");
+});
+
+test("act MESSAGE_ID unreact --reaction love posts the removal", async () => {
+  await run(["act", "14676", "unreact", "--reaction", "love"]);
+  assert.equal(calls[0].url.endsWith("/api/v1/mailbox/messages/14676/actions"), true);
+  assert.deepEqual(calls[0].body, { type: "unreact", reaction: "love" });
+});
+
+test("act read --thread ID posts a thread action", async () => {
+  await run(["act", "read", "--thread", "imessage:182:abc"]);
+  assert.equal(calls[0].url.endsWith("/api/v1/mailbox/threads/imessage%3A182%3Aabc/actions"), true);
+  assert.deepEqual(calls[0].body, { type: "read" });
+});
+
+test("act typing --thread ID posts start, --stop posts stop", async () => {
+  await run(["act", "typing", "--thread", "imessage:182:abc"]);
+  assert.deepEqual(calls[0].body, { type: "typing", state: "start" });
+
+  await run(["act", "typing", "--thread", "imessage:182:abc", "--stop"]);
+  assert.deepEqual(calls[1].body, { type: "typing", state: "stop" });
+});
+
+// M5: a body-only mailbox-key send keeps the old {to, body} shape, so it
+// works with old and new servers alike.
+test("a body-only mailbox-key send posts {to, body}", async () => {
+  await run(["send", "--to", "+15551234567", "--body", "hi"]);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url.endsWith("/api/v1/mailbox/messages"), true);
+  assert.deepEqual(calls[0].body, { to: "+15551234567", body: "hi" });
+});
+
+// S2: --thread without a mailbox key is an error, never ignored.
+test("send --thread without a mailbox key is an error", async () => {
+  delete process.env.MAILBOXES_MAILBOX_KEY;
+  const originalExit = process.exit;
+  let exitCode: number | undefined;
+  const stubbedExit = (code?: number) => {
+    exitCode = code;
+    return undefined as never;
+  };
+  process.exit = stubbedExit as typeof process.exit;
+  try {
+    await run(["send", "--mailbox", "133", "--to", "+15551234567", "--body", "hi", "--thread", "imessage:182:abc"]);
+  } finally {
+    process.exit = originalExit;
+  }
+  assert.equal(exitCode, 1);
+  assert.equal(calls.length, 0);
+  process.env.MAILBOXES_MAILBOX_KEY = "mbk-test-key";
+});
+
+// S3: --body with --text sends both.
+test("send --body with --text sends both text parts", async () => {
+  await run(["send", "--to", "+15551234567", "--text", "one", "--body", "two"]);
+  assert.deepEqual(calls[0].body.parts, [
+    { type: "text", text: "one" },
+    { type: "text", text: "two" },
+  ]);
 });
 
 test("send without flags and with both keys keeps the user-key path", async () => {

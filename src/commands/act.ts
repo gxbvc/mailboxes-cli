@@ -3,87 +3,54 @@ import { success, error } from "../output.js";
 import { mailboxKeyClient } from "./actions.js";
 
 // act: one verb on one message or thread.
-//   act MESSAGE_ID react love     (also unreact --reaction love)
-//   act MESSAGE_ID unsend
-//   act --thread THREAD_ID read
-//   act --thread THREAD_ID typing [--stop]
+//   act MESSAGE_ID react love
+//   act MESSAGE_ID unreact --reaction love
+//   act read --thread THREAD_ID
+//   act typing --thread THREAD_ID [--stop]
+// --thread names the thread and is required for the thread verbs.
 export function registerActCommand(program: Command): void {
-  const act = program
-    .command("act <target>")
-    .description("Act on a message or thread (mailbox key). target: a message id, or --thread for a thread action");
-
-  act
-    .command("react <reaction>")
-    .description("React to a message: love/like/dislike/laugh/emphasize/question or one emoji")
-    .option("--thread", "target is a thread id (not valid for react)")
-    .action(async (reaction, opts, command) => {
+  program
+    .command("act [target] [verb] [arg]")
+    .description("Act on a message or thread (mailbox key): act MESSAGE_ID react love | act unreact MESSAGE_ID --reaction R | act read --thread ID | act typing --thread ID [--stop]")
+    .option("--thread <thread_id>", "The thread id (required for read and typing)")
+    .option("--reaction <reaction>", "The reaction to remove (unreact)")
+    .option("--stop", "Stop the typing indicator")
+    .action(async (target, verb, arg, opts) => {
       try {
-        if (opts.thread) {
-          error("react acts on a message: act MESSAGE_ID react love");
+        verb = verb ?? target;
+        const messageAction = verb === "react" || verb === "unreact";
+
+        if (messageAction) {
+          if (opts.thread) {
+            error("react acts on a message: act MESSAGE_ID react love");
+            return;
+          }
+          if (!target) {
+            error("usage: act MESSAGE_ID react love");
+            return;
+          }
+          const payload = verb === "unreact"
+            ? { type: "unreact", reaction: opts.reaction }
+            : { type: "react", reaction: arg };
+          const data = await mailboxKeyClient().post(`/api/v1/mailbox/messages/${encodeURIComponent(target)}/actions`, payload);
+          success(data);
+          return;
         }
-        const messageId = command.parent.args[0];
-        const data = await mailboxKeyClient().post(`/api/v1/mailbox/messages/${encodeURIComponent(messageId)}/actions`, {
-          type: "react",
-          reaction,
-        });
-        success(data);
-      } catch (e: any) {
-        error(e.message, e.code);
-      }
-    });
 
-  act
-    .command("unreact")
-    .description("Remove a reaction (name it: the providers remove one named reaction)")
-    .requiredOption("--reaction <reaction>", "The reaction to remove")
-    .action(async (_positional, opts, command) => {
-      try {
-        const messageId = command.parent.args[0];
-        const data = await mailboxKeyClient().post(`/api/v1/mailbox/messages/${encodeURIComponent(messageId)}/actions`, {
-          type: "unreact",
-          reaction: opts.reaction,
-        });
-        success(data);
-      } catch (e: any) {
-        error(e.message, e.code);
-      }
-    });
-
-  act
-    .command("read")
-    .description("Mark a thread as read")
-    .option("--thread", "target is a thread id")
-    .action(async (_positional, opts, command) => {
-      try {
-        if (!opts.thread) {
-          error("read acts on a thread: act --thread THREAD_ID read");
+        if (verb === "read" || verb === "typing") {
+          const threadId = opts.thread;
+          if (!threadId) {
+            error(`${verb} acts on a thread: act ${verb} --thread THREAD_ID`);
+            return;
+          }
+          const payload: Record<string, unknown> = { type: verb };
+          if (verb === "typing") payload.state = opts.stop ? "stop" : "start";
+          const data = await mailboxKeyClient().post(`/api/v1/mailbox/threads/${encodeURIComponent(threadId)}/actions`, payload);
+          success(data);
+          return;
         }
-        const threadId = command.parent.args[0];
-        const data = await mailboxKeyClient().post(`/api/v1/mailbox/threads/${encodeURIComponent(threadId)}/actions`, {
-          type: "read",
-        });
-        success(data);
-      } catch (e: any) {
-        error(e.message, e.code);
-      }
-    });
 
-  act
-    .command("typing")
-    .description("Start or stop the typing indicator on a thread")
-    .option("--thread", "target is a thread id")
-    .option("--stop", "Stop the indicator")
-    .action(async (_positional, opts, command) => {
-      try {
-        if (!opts.thread) {
-          error("typing acts on a thread: act --thread THREAD_ID typing [--stop]");
-        }
-        const threadId = command.parent.args[0];
-        const data = await mailboxKeyClient().post(`/api/v1/mailbox/threads/${encodeURIComponent(threadId)}/actions`, {
-          type: "typing",
-          state: opts.stop ? "stop" : "start",
-        });
-        success(data);
+        error("unknown verb; use react, unreact, read or typing");
       } catch (e: any) {
         error(e.message, e.code);
       }
