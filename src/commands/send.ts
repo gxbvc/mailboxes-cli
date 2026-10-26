@@ -15,6 +15,9 @@ export function registerSendCommand(program: Command): void {
     .option("--text <text>", "Text part (repeat; joins into the message)", (v: string, prev: string[]) => (prev ?? []).concat([v]))
     .option("--image <url>", "Image part url (one per send for now)")
     .option("--audio <url>", "Audio (voice note) part url")
+    .option("--sticker <url>", "Sticker part url (Linq; its own message, peelable)")
+    .option("--link <url>", "Link part url (Linq; rich preview card, must be alone)")
+    .option("--contact", "Share this line's contact card (Linq; the card comes from the mailbox)")
     .option("--poll <text>", "Poll option (repeat: --poll A --poll B sends a poll)", (v: string, prev: string[]) => (prev ?? []).concat([v]))
     .option("--cc <cc>", "CC address (email only)")
     .option("--bcc <bcc>", "BCC address (email only)")
@@ -28,7 +31,7 @@ export function registerSendCommand(program: Command): void {
         // per-mailbox-key endpoint, where the mailbox comes from the key
         // (MAILBOXES_MAILBOX_KEY). The user-key endpoint does not carry them.
         const mailboxKey = process.env.MAILBOXES_MAILBOX_KEY;
-        const wantsParts = Boolean(opts.text?.length || opts.image || opts.poll?.length || opts.audio || opts.voiceNote || opts.effect || opts.replyTo);
+        const wantsParts = Boolean(opts.text?.length || opts.image || opts.poll?.length || opts.audio || opts.voiceNote || opts.effect || opts.replyTo || opts.sticker || opts.link || opts.contact);
         if (wantsParts && !mailboxKey) {
           error("parts/effects/polls need a per-mailbox key in MAILBOXES_MAILBOX_KEY");
           return;
@@ -44,7 +47,7 @@ export function registerSendCommand(program: Command): void {
 
           // Body-only sends keep the old shape ({to, body}): it works with
           // old and new servers alike (review step A, M5).
-          const partsOnly = Boolean(opts.text?.length || opts.image || opts.poll?.length || opts.audio || opts.voiceNote);
+          const partsOnly = Boolean(opts.text?.length || opts.image || opts.poll?.length || opts.audio || opts.voiceNote || opts.sticker || opts.link || opts.contact);
           if (partsOnly) {
             const parts: Array<Record<string, unknown>> = [];
             for (const text of opts.text ?? []) {
@@ -55,6 +58,9 @@ export function registerSendCommand(program: Command): void {
             if (opts.image) parts.push({ type: "image", url: opts.image });
             if (opts.audio) parts.push({ type: "audio", url: opts.audio, voice_note: true });
             if (opts.voiceNote) parts.push({ type: "audio", url: opts.voiceNote, voice_note: true });
+            if (opts.sticker) parts.push({ type: "sticker", url: opts.sticker });
+            if (opts.link) parts.push({ type: "link", url: opts.link });
+            if (opts.contact) parts.push({ type: "contact" });
             if (opts.poll?.length) parts.push({ type: "poll", options: opts.poll });
             payload.parts = parts;
             if (opts.thread) payload.thread_id = String(opts.thread);
