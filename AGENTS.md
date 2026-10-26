@@ -176,3 +176,6 @@ key (`MAILBOXES_API_KEY`) as before; the new send flags `--effect`,
 through the mailbox-key endpoint and exit with an error without that key.
 After pulling on another host, run `npm run build` (bin runs `dist/`, which
 is not committed). Tests: `npm test` (node's built-in runner, stubbed fetch).
+
+`poll --to E164 [--question TEXT] --option A --option B [...]` sends a Linq
+poll through a mailbox key (Linq mailboxes only; 2 to 10 options).
