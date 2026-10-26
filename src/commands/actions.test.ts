@@ -83,16 +83,28 @@ test("send flags ride on the mailbox-key endpoint", async () => {
   ]);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url.endsWith("/api/v1/mailbox/messages"), true);
-  // --body with the option flags posts the LEGACY field names, read by old
-  // and new servers alike (R2-M2): the option is never dropped.
+  // --voice-note makes it a parts send: every option is carried, none
+  // dropped.
   assert.deepEqual(calls[0].body, {
+    to: "+15551234567",
+    parts: [
+      { type: "text", text: "hi" },
+      { type: "audio", url: "https://example.com/note.caf", voice_note: true },
+    ],
+    effect: "confetti",
+    reply_to: "45",
+  });
+  assert.equal(calls[0].authorization, "Bearer mbk-test-key");
+
+  // R2-M2: --body with effect/reply-to ONLY (no parts flag) posts the
+  // legacy field names, read by old and new servers alike.
+  await run(["send", "--to", "+15551234567", "--body", "hi", "--effect", "confetti", "--reply-to", "45"]);
+  assert.deepEqual(calls[1].body, {
     to: "+15551234567",
     body: "hi",
     send_style: "confetti",
     reply_to_message_id: "45",
-    voice_note_url: "https://example.com/note.caf",
   });
-  assert.equal(calls[0].authorization, "Bearer mbk-test-key");
 
   // R2-M1: --image is one URL, and it posts an image PART.
   await run(["send", "--to", "+15551234567", "--image", "https://example.com/pic.png"]);
@@ -164,6 +176,17 @@ test("send --thread without a mailbox key is an error", async () => {
   assert.equal(exitCode, 1);
   assert.equal(calls.length, 0);
   process.env.MAILBOXES_MAILBOX_KEY = "mbk-test-key";
+});
+
+// R3-M1: --voice-note rides into the parts when a parts flag is present -
+// never dropped.
+test("--voice-note with --text becomes an audio part", async () => {
+  await run(["send", "--to", "+15551234567", "--text", "hi", "--voice-note", "https://example.com/note.m4a"]);
+  assert.equal(calls[0].url.endsWith("/api/v1/mailbox/messages"), true);
+  assert.deepEqual(calls[0].body.parts, [
+    { type: "text", text: "hi" },
+    { type: "audio", url: "https://example.com/note.m4a", voice_note: true },
+  ]);
 });
 
 // S3: --body with --text sends both.
