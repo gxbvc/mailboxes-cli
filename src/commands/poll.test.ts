@@ -51,6 +51,23 @@ test("poll works without a question", async () => {
   assert.deepEqual(calls[0].body, { to: "+15551234567", options: ["Yes", "No"] });
 });
 
+test("poll with fewer than two options is refused locally, nothing sent", async () => {
+  const originalExit = process.exit;
+  let exitCode: number | undefined;
+  const stubbedExit = (code?: number) => {
+    exitCode = code;
+    return undefined as never;
+  };
+  process.exit = stubbedExit as typeof process.exit;
+  try {
+    await run(["poll", "--to", "+15551234567", "--option", "Only"]);
+  } finally {
+    process.exit = originalExit;
+  }
+  assert.equal(exitCode, 1);
+  assert.equal(calls.length, 0);
+});
+
 test("poll refused by the server exits with the error code", async () => {
   // The server owns option validation: one option is a 422 send_refused.
   globalThis.fetch = (async (url: any, init: any) => {
@@ -67,7 +84,7 @@ test("poll refused by the server exits with the error code", async () => {
   };
   process.exit = stubbedExit as typeof process.exit;
   try {
-    await run(["poll", "--to", "+15551234567", "--option", "Only"]);
+    await run(["poll", "--to", "+15551234567", "--option", "A", "--option", "B"]);
   } finally {
     process.exit = originalExit;
   }
