@@ -81,12 +81,15 @@ test("send flags ride on the mailbox-key endpoint", async () => {
   ]);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url.endsWith("/api/v1/mailbox/messages"), true);
+  // The new shape: everything is parts and fields.
   assert.deepEqual(calls[0].body, {
     to: "+15551234567",
-    body: "hi",
-    send_style: "confetti",
-    reply_to_message_id: "45",
-    voice_note_url: "https://example.com/note.caf",
+    parts: [
+      { type: "text", text: "hi" },
+      { type: "audio", url: "https://example.com/note.caf", voice_note: true },
+    ],
+    effect: "confetti",
+    reply_to: "45",
   });
   assert.equal(calls[0].authorization, "Bearer mbk-test-key");
 });

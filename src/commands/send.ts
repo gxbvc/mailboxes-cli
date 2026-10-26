@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { createClient } from "../api.js";
 import { success, error } from "../output.js";
+import { mailboxKeyClient } from "./actions.js";
 
 export function registerSendCommand(program: Command): void {
   program
@@ -10,44 +11,53 @@ export function registerSendCommand(program: Command): void {
     .option("--from <address>", "From email address (email send)")
     .requiredOption("--to <address>", "Recipient email or E.164 phone")
     .option("--subject <subject>", "Email subject (email only)")
-    .requiredOption("--body <body>", "Message body")
+    .option("--body <body>", "Message body (shortcut for one text part)")
+    .option("--text <text>", "Text part (repeat; joins into the message)", (v: string, prev: string[]) => (prev ?? []).concat([v]))
+    .option("--image <url>", "Image part url (repeat)", (v: string, prev: string[]) => (prev ?? []).concat([v]))
+    .option("--audio <url>", "Audio (voice note) part url", undefined)
+    .option("--poll <text>", "Poll option (repeat: --poll A --poll B sends a poll)", (v: string, prev: string[]) => (prev ?? []).concat([v]))
     .option("--cc <cc>", "CC address (email only)")
     .option("--bcc <bcc>", "BCC address (email only)")
     .option("--thread <thread_id>", "Thread to reply into (mailbox-key iMessage send)")
-    .option("--effect <style>", "iMessage effect on a mailbox-key send: celebration, fireworks, lasers, love, confetti, balloons, echo, spotlight, invisible, gentle, loud, slam")
+    .option("--effect <style>", "iMessage effect on a mailbox-key send")
     .option("--reply-to <message_id>", "Inline reply to one of this mailbox's messages (mailbox key)")
     .option("--voice-note <url>", "https URL to an audio file: caf, mp3, m4a, aac, wav, aiff, amr (mailbox key)")
     .action(async (opts) => {
       try {
-        // The iMessage send options ride on the per-mailbox-key endpoint,
-        // where the mailbox comes from the key (MAILBOXES_MAILBOX_KEY). The
-        // user-key endpoint does not carry them, so refuse rather than drop.
+        // The parts shape, effects, inline replies and polls ride on the
+        // per-mailbox-key endpoint, where the mailbox comes from the key
+        // (MAILBOXES_MAILBOX_KEY). The user-key endpoint does not carry them.
         const mailboxKey = process.env.MAILBOXES_MAILBOX_KEY;
-        const wantsOptions = Boolean(opts.effect || opts.replyTo || opts.voiceNote);
-        if (wantsOptions && !mailboxKey) {
-          error("--effect/--reply-to/--voice-note need a per-mailbox key in MAILBOXES_MAILBOX_KEY");
-          return; // unreachable: error() exits, but never leave a send path open
+        const wantsParts = Boolean(opts.text?.length || opts.image?.length || opts.poll?.length || opts.audio || opts.voiceNote || opts.effect || opts.replyTo);
+        if (wantsParts && !mailboxKey) {
+          error("parts/effects/polls need a per-mailbox key in MAILBOXES_MAILBOX_KEY");
+          return;
         }
+        const hasTarget = Boolean(opts.mailbox || opts.from);
+        if (wantsParts || (mailboxKey && !hasTarget)) {
+          const parts: Array<Record<string, unknown>> = [];
+          for (const text of opts.text ?? []) {
+            parts.push({ type: "text", text });
+          }
+          for (const url of opts.image ?? []) {
+            parts.push({ type: "image", url });
+          }
+          if (opts.audio) parts.push({ type: "audio", url: opts.audio, voice_note: true });
+          if (opts.voiceNote) parts.push({ type: "audio", url: opts.voiceNote, voice_note: true });
+          if (opts.poll?.length) parts.push({ type: "poll", options: opts.poll });
+          // The body shortcut: one text part.
+          if (opts.body && !opts.text?.length) parts.unshift({ type: "text", text: opts.body });
 
-        if (mailboxKey && (wantsOptions || (!opts.mailbox && !opts.from))) {
-          const payload: Record<string, string> = {
-            to: opts.to,
-            body: opts.body,
-          };
+          const payload: Record<string, unknown> = { to: opts.to, parts };
           if (opts.thread) payload.thread_id = String(opts.thread);
-          if (opts.effect) payload.send_style = String(opts.effect);
-          if (opts.replyTo) payload.reply_to_message_id = String(opts.replyTo);
-          if (opts.voiceNote) payload.voice_note_url = String(opts.voiceNote);
-          const data = await createClient(mailboxKey).post("/api/v1/mailbox/messages", payload);
+          if (opts.effect) payload.effect = String(opts.effect);
+          if (opts.replyTo) payload.reply_to = String(opts.replyTo);
+          const data = await mailboxKeyClient().post("/api/v1/mailbox/messages", payload);
           success(data);
           return;
         }
 
-        if (opts.thread && !mailboxKey) {
-          error("--thread needs a per-mailbox key in MAILBOXES_MAILBOX_KEY");
-          return;
-        }
-        if (!opts.mailbox && !opts.from) {
+        if (!hasTarget) {
           error("--mailbox or --from is required");
         }
         if (!opts.mailbox && !opts.subject) {
