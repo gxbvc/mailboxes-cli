@@ -11,7 +11,7 @@ import { mailboxKeyClient } from "./actions.js";
 export function registerActCommand(program: Command): void {
   program
     .command("act [target] [verb] [arg]")
-    .description("Act on a message or thread (mailbox key): act MESSAGE_ID react love | act MESSAGE_ID unreact --reaction love | act MESSAGE_ID edit --text T | act MESSAGE_ID delete_record | act read --thread ID | act typing --thread ID [--stop] | act location-request --thread ID")
+    .description("Act on a message or thread (mailbox key): act MESSAGE_ID react love | act MESSAGE_ID unreact --reaction love | act MESSAGE_ID edit --text T | act read --thread ID | act typing --thread ID [--stop] | act location-request --thread ID")
     .option("--thread <thread_id>", "The thread id (required for read and typing)")
     .option("--reaction <reaction>", "The reaction to remove (unreact)")
     .option("--text <text>", "The new text (edit)")
@@ -19,12 +19,13 @@ export function registerActCommand(program: Command): void {
     .action(async (target, verb, arg, opts) => {
       try {
         verb = verb ?? target;
-        if (verb === "unsend") {
-          // Linq has no unsend: refuse with the real thing (Misc decision b).
-          error("iMessage unsend is not available on this line. delete_record removes the message from Linq's records only; the person still sees it: act MESSAGE_ID delete_record");
+        if (verb === "unsend" || verb === "delete_record") {
+          // Removed (Christian, 08:11): Linq's delete does not unsend - the
+          // person still sees the message - so the action was misleading.
+          error("delete_record was removed: Linq's delete does not unsend - the person still sees the message, so the action was misleading.");
           return;
         }
-        const messageAction = verb === "react" || verb === "unreact" || verb === "edit" || verb === "delete_record";
+        const messageAction = verb === "react" || verb === "unreact" || verb === "edit";
 
         if (messageAction) {
           if (opts.thread) {
@@ -42,9 +43,6 @@ export function registerActCommand(program: Command): void {
               return;
             }
             payload = { type: "edit", text: opts.text };
-          } else if (verb === "delete_record") {
-            // Removes Linq's stored copy; the person still sees the message.
-            payload = { type: "delete_record" };
           } else {
             const reaction = verb === "unreact" ? (opts.reaction ?? arg) : arg;
             if (!reaction) {
