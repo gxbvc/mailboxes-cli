@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { createClient } from "../api.js";
 import { success, error } from "../output.js";
+import { buildForm, collect, describe, inspectAttachments } from "../attachments.js";
 
 export function registerReplyCommand(program: Command): void {
   program
@@ -11,12 +12,15 @@ export function registerReplyCommand(program: Command): void {
     .requiredOption("--to <address>", "Recipient email or E.164 phone")
     .requiredOption("--body <body>", "Reply body")
     .option("--subject <subject>", "Custom subject (email only; default: auto-generated Re: ...)")
+    .option("--attach <path>", "Attach a file to an email reply (repeat; .xlsx .csv .pdf .png .jpg; 5 files, 10 MB total)", collect)
+    .option("--dry-run", "Check the options and files, print names and sizes, send nothing")
     .action(async (threadId, opts) => {
       try {
+        // Check the files first, before any request. Names and sizes only.
+        const attachments = inspectAttachments(opts.attach ?? []);
         if (!opts.mailbox && !opts.from) {
           error("--mailbox or --from is required");
         }
-        const client = createClient();
         const payload: Record<string, string> = {
           to: opts.to,
           body: opts.body,
@@ -27,7 +31,14 @@ export function registerReplyCommand(program: Command): void {
           payload.from = opts.from;
         }
         if (opts.subject) payload.subject = opts.subject;
-        const data = await client.post(`/api/v1/threads/${threadId}/reply`, payload);
+        if (opts.dryRun) {
+          const { body, ...fields } = payload;
+          success({ dry_run: true, would_send: { thread_id: threadId, ...fields, body_chars: body.length, attachments: describe(attachments) } });
+          return;
+        }
+        const client = createClient();
+        const path = `/api/v1/threads/${threadId}/reply`;
+        const data = attachments.length ? await client.postForm(path, buildForm(payload, attachments)) : await client.post(path, payload);
         success(data);
       } catch (e: any) {
         error(e.message);

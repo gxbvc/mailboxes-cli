@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { createClient } from "../api.js";
 import { success, error } from "../output.js";
 import { mailboxKeyClient } from "./actions.js";
+import { buildForm, collect, describe, inspectAttachments } from "../attachments.js";
 
 export function registerSendCommand(program: Command): void {
   program
@@ -26,8 +27,12 @@ export function registerSendCommand(program: Command): void {
     .option("--effect <style>", "iMessage effect on a mailbox-key send")
     .option("--reply-to <message_id>", "Inline reply to one of this mailbox's messages (mailbox key)")
     .option("--voice-note <url>", "https URL to an audio file: caf, mp3, m4a, aac, wav, aiff, amr (mailbox key)")
+    .option("--attach <path>", "Attach a file to an email (repeat; .xlsx .csv .pdf .png .jpg; 5 files, 10 MB total)", collect)
+    .option("--dry-run", "Check the options and files, print names and sizes, send nothing")
     .action(async (opts) => {
       try {
+        // Check the files first, before any request. Names and sizes only.
+        const attachments = inspectAttachments(opts.attach ?? []);
         // The parts shape, effects, inline replies and polls ride on the
         // per-mailbox-key endpoint, where the mailbox comes from the key
         // (MAILBOXES_MAILBOX_KEY). The user-key endpoint does not carry them.
@@ -37,13 +42,18 @@ export function registerSendCommand(program: Command): void {
           error("parts/effects/polls need a per-mailbox key in MAILBOXES_MAILBOX_KEY");
           return;
         }
+        // Attachments ride on the user-key email path only.
+        if (attachments.length && (wantsParts || opts.thread || !(opts.mailbox || opts.from))) {
+          error("--attach needs --mailbox or --from (user key) and cannot be mixed with parts, effects or --thread");
+          return;
+        }
         // --thread always needs the mailbox-key endpoint.
         if (opts.thread && !mailboxKey) {
           error("--thread needs a per-mailbox key in MAILBOXES_MAILBOX_KEY");
           return;
         }
         const hasTarget = Boolean(opts.mailbox || opts.from);
-        if (wantsParts || (mailboxKey && !hasTarget)) {
+        if (!opts.dryRun && (wantsParts || (mailboxKey && !hasTarget))) {
           // One handle: a string (a direct send). Two or more: the array
           // starts a group.
           const payload: Record<string, unknown> = { to: opts.to.length === 1 ? opts.to[0] : opts.to };
@@ -96,6 +106,9 @@ export function registerSendCommand(program: Command): void {
         if (!hasTarget) {
           error("--mailbox or --from is required");
         }
+        if (opts.dryRun && wantsParts) {
+          error("--dry-run covers the user-key email send only (no parts, effects or polls)");
+        }
         // Groups need the mailbox-key endpoint; the user-key endpoint sends
         // to ONE recipient, so two --to values must error, never drop one
         // (with or without a mailbox key alongside --mailbox).
@@ -118,6 +131,16 @@ export function registerSendCommand(program: Command): void {
         if (opts.subject) payload.subject = opts.subject;
         if (opts.cc) payload.cc = opts.cc;
         if (opts.bcc) payload.bcc = opts.bcc;
+        if (opts.dryRun) {
+          const { body, ...fields } = payload;
+          success({ dry_run: true, would_send: { ...fields, body_chars: String(body ?? "").length, attachments: describe(attachments) } });
+          return;
+        }
+        if (attachments.length) {
+          const data = await createClient().postForm("/api/v1/messages", buildForm(payload, attachments));
+          success(data);
+          return;
+        }
         const data = await createClient().post("/api/v1/messages", payload);
         success(data);
       } catch (e: any) {

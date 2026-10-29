@@ -179,3 +179,14 @@ is not committed). Tests: `npm test` (node's built-in runner, stubbed fetch).
 
 `poll --to E164 [--question TEXT] --option A --option B [...]` sends a Linq
 poll through a mailbox key (Linq mailboxes only; 2 to 10 options).
+
+## Email attachments (`--attach`)
+
+`send` and `reply` take `--attach PATH` (repeat), for EMAIL only, with the user key:
+
+```bash
+mailboxes-cli reply THREAD_ID --mailbox 174 --to "person@example.com" --body "Attached." --attach /path/to/file.xlsx
+mailboxes-cli reply THREAD_ID --mailbox 174 --to "person@example.com" --body "Attached." --attach /path/to/file.xlsx --dry-run
+```
+
+Allowed: .xlsx .csv .pdf .png .jpg (case-insensitive), regular files only (no symlinks), at most 5 files, 10 MB total. The CLI refuses before any request. `--dry-run` prints file names, types and sizes only and sends nothing. The server checks again (type by content) and accepts files only for mailboxes with `allow_outbound_attachments` on.

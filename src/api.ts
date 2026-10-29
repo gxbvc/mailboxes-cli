@@ -3,7 +3,7 @@ import { getApiKey, getApiUrl } from "./config.js";
 export class MailboxesAPI {
   constructor(private baseUrl: string, private apiKey: string) {}
 
-  private async request(method: string, path: string, body?: Record<string, any>, params?: Record<string, string>): Promise<any> {
+  private async request(method: string, path: string, body?: Record<string, any> | FormData, params?: Record<string, string>): Promise<any> {
     let url = `${this.baseUrl}${path}`;
     if (params) {
       const searchParams = new URLSearchParams(params);
@@ -17,7 +17,10 @@ export class MailboxesAPI {
 
     const init: RequestInit = { method, headers };
 
-    if (body && (method === "POST" || method === "PATCH" || method === "PUT")) {
+    if (body instanceof FormData) {
+      // Multipart: fetch sets the Content-Type with the boundary itself.
+      init.body = body;
+    } else if (body && (method === "POST" || method === "PATCH" || method === "PUT")) {
       headers["Content-Type"] = "application/json";
       init.body = JSON.stringify(body);
     }
@@ -46,6 +49,10 @@ export class MailboxesAPI {
 
   async post(path: string, body?: Record<string, any>): Promise<any> {
     return this.request("POST", path, body);
+  }
+
+  async postForm(path: string, form: FormData): Promise<any> {
+    return this.request("POST", path, form);
   }
 
   async patch(path: string, body?: Record<string, any>): Promise<any> {
