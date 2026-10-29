@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { createClient } from "../api.js";
 import { success, error } from "../output.js";
-import { buildForm, collect, describe, inspectAttachments } from "../attachments.js";
+import { buildForm, checkRecipients, collect, describe, guardScan, inspectAttachments } from "../attachments.js";
 
 export function registerReplyCommand(program: Command): void {
   program
@@ -12,12 +12,14 @@ export function registerReplyCommand(program: Command): void {
     .requiredOption("--to <address>", "Recipient email or E.164 phone")
     .requiredOption("--body <body>", "Reply body")
     .option("--subject <subject>", "Custom subject (email only; default: auto-generated Re: ...)")
-    .option("--attach <path>", "Attach a file to an email reply (repeat; .xlsx .csv .pdf .png .jpg; 5 files, 10 MB total)", collect)
+    .option("--attach <path>", "Attach a file to an email reply (repeat; .xlsx .csv .pdf .png .jpg; 5 files, 10 MB each, 15 MB total; from your outbox)", collect)
+    .option("--outbox <name>", "Your outbox folder name: files must be in ~/tmp/mail-outbox/<name> (mode 0700)")
+    .option("--new-recipient", "Allow attachments to a recipient that is not in the thread or on the mailbox's domain list")
     .option("--dry-run", "Check the options and files, print names and sizes, send nothing")
     .action(async (threadId, opts) => {
       try {
         // Check the files first, before any request. Names and sizes only.
-        const attachments = inspectAttachments(opts.attach ?? []);
+        const attachments = inspectAttachments(opts.attach ?? [], opts.outbox);
         if (!opts.mailbox && !opts.from) {
           error("--mailbox or --from is required");
         }
@@ -31,6 +33,11 @@ export function registerReplyCommand(program: Command): void {
           payload.from = opts.from;
         }
         if (opts.subject) payload.subject = opts.subject;
+        if (attachments.length) {
+          checkRecipients([opts.to]);
+          guardScan(attachments);
+          if (opts.newRecipient) payload.allow_new_recipient = "1";
+        }
         if (opts.dryRun) {
           const { body, ...fields } = payload;
           success({ dry_run: true, would_send: { thread_id: threadId, ...fields, body_chars: body.length, attachments: describe(attachments) } });

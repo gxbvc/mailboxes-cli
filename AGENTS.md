@@ -182,11 +182,17 @@ poll through a mailbox key (Linq mailboxes only; 2 to 10 options).
 
 ## Email attachments (`--attach`)
 
-`send` and `reply` take `--attach PATH` (repeat), for EMAIL only, with the user key:
+`send` and `reply` take `--attach` (repeat), for EMAIL only, with the user key. Files come from the tab's outbox folder only.
 
 ```bash
-mailboxes-cli reply THREAD_ID --mailbox 174 --to "person@example.com" --body "Attached." --attach /path/to/file.xlsx
-mailboxes-cli reply THREAD_ID --mailbox 174 --to "person@example.com" --body "Attached." --attach /path/to/file.xlsx --dry-run
+mailboxes-cli reply THREAD_ID --mailbox 174 --to "person@example.com" --body "Attached." --outbox NAME --attach FILE.xlsx
+mailboxes-cli reply THREAD_ID --mailbox 174 --to "person@example.com" --body "Attached." --outbox NAME --attach FILE.xlsx --dry-run
 ```
 
-Allowed: .xlsx .csv .pdf .png .jpg (case-insensitive), regular files only (no symlinks), at most 5 files, 10 MB total. The CLI refuses before any request. `--dry-run` prints file names, types and sizes only and sends nothing. The server checks again (type by content) and accepts files only for mailboxes with `allow_outbound_attachments` on.
+- `--outbox NAME` is required with `--attach`. The folder is `~/tmp/mail-outbox/NAME` (NAME is a-z 0-9 _ -). It must exist, be a real directory (not a symlink) owned by you, with mode 0700. The folder above it must not be group or world writable. `--attach` is a bare file name in that folder, or a full path into it. After realpath the file must still be inside the folder; a symlink anywhere on the way is refused.
+- Allowed types: .xlsx .csv .pdf .png .jpg (case-insensitive). Regular files only. At most 5 files, 10 MB per file, 15 MB per mail. The CLI refuses before any request.
+- One or two recipients (to and cc together). No `--bcc` with files.
+- A recipient that is not in the thread (reply) or on the mailbox's domain list needs `--new-recipient`. The server decides; the flag only says you mean it.
+- Secret check: the text parts (csv text; xlsx shared strings and sheet cell text) go through `~/projects/hq/bin/guard-check scrub` (env `MAILBOXES_GUARD_CHECK` overrides the path). A hit refuses with a count only, never the value. If guard-check cannot run, the send is refused. PDF, PNG and JPG are not text-scanned here (the server scans csv and xlsx text for key prefixes too). Note: guard-check passes everything when its hash table is missing.
+- `--dry-run` checks everything (including the secret check) and prints file names, types and sizes only; it sends nothing.
+- The server accepts files only for mailboxes with `allow_outbound_attachments` on, and never on a Bailey mailbox. It checks the type by content, refuses xlsx formulas, macros and links, csv cells that start with = + - @ or a tab (a plain number may start with -), and PDF script or launch actions (raw bytes only: a keyword inside a compressed object stream is not seen). It keeps each sent file encrypted with the message.

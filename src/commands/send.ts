@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { createClient } from "../api.js";
 import { success, error } from "../output.js";
 import { mailboxKeyClient } from "./actions.js";
-import { buildForm, collect, describe, inspectAttachments } from "../attachments.js";
+import { buildForm, checkRecipients, collect, describe, guardScan, inspectAttachments } from "../attachments.js";
 
 export function registerSendCommand(program: Command): void {
   program
@@ -27,12 +27,14 @@ export function registerSendCommand(program: Command): void {
     .option("--effect <style>", "iMessage effect on a mailbox-key send")
     .option("--reply-to <message_id>", "Inline reply to one of this mailbox's messages (mailbox key)")
     .option("--voice-note <url>", "https URL to an audio file: caf, mp3, m4a, aac, wav, aiff, amr (mailbox key)")
-    .option("--attach <path>", "Attach a file to an email (repeat; .xlsx .csv .pdf .png .jpg; 5 files, 10 MB total)", collect)
+    .option("--attach <path>", "Attach a file to an email (repeat; .xlsx .csv .pdf .png .jpg; 5 files, 10 MB each, 15 MB total; from your outbox)", collect)
+    .option("--outbox <name>", "Your outbox folder name: files must be in ~/tmp/mail-outbox/<name> (mode 0700)")
+    .option("--new-recipient", "Allow attachments to a recipient that is not in the thread or on the mailbox's domain list")
     .option("--dry-run", "Check the options and files, print names and sizes, send nothing")
     .action(async (opts) => {
       try {
         // Check the files first, before any request. Names and sizes only.
-        const attachments = inspectAttachments(opts.attach ?? []);
+        const attachments = inspectAttachments(opts.attach ?? [], opts.outbox);
         // The parts shape, effects, inline replies and polls ride on the
         // per-mailbox-key endpoint, where the mailbox comes from the key
         // (MAILBOXES_MAILBOX_KEY). The user-key endpoint does not carry them.
@@ -131,6 +133,11 @@ export function registerSendCommand(program: Command): void {
         if (opts.subject) payload.subject = opts.subject;
         if (opts.cc) payload.cc = opts.cc;
         if (opts.bcc) payload.bcc = opts.bcc;
+        if (attachments.length) {
+          checkRecipients(opts.to, opts.cc, opts.bcc);
+          guardScan(attachments);
+          if (opts.newRecipient) payload.allow_new_recipient = "1";
+        }
         if (opts.dryRun) {
           const { body, ...fields } = payload;
           success({ dry_run: true, would_send: { ...fields, body_chars: String(body ?? "").length, attachments: describe(attachments) } });
