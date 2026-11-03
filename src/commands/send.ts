@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { createClient } from "../api.js";
 import { success, error } from "../output.js";
 import { mailboxKeyClient } from "./actions.js";
-import { buildForm, checkRecipients, collect, describe, guardScan, inspectAttachments } from "../attachments.js";
+import { ALLOWED_TYPES_HELP, buildForm, checkRecipients, collect, describe, guardScan, inspectAttachments } from "../attachments.js";
 
 export function registerSendCommand(program: Command): void {
   program
@@ -27,7 +27,7 @@ export function registerSendCommand(program: Command): void {
     .option("--effect <style>", "iMessage effect on a mailbox-key send")
     .option("--reply-to <message_id>", "Inline reply to one of this mailbox's messages (mailbox key)")
     .option("--voice-note <url>", "https URL to an audio file: caf, mp3, m4a, aac, wav, aiff, amr (mailbox key)")
-    .option("--attach <path>", "Attach a file to an email (repeat; .xlsx .csv .pdf .png .jpg; 5 files, 10 MB each, 15 MB total; from your outbox)", collect)
+    .option("--attach <path>", `Attach a file to an email (repeat; ${ALLOWED_TYPES_HELP}; from your outbox)`, collect)
     .option("--outbox <name>", "Your outbox folder name: files must be in ~/tmp/mail-outbox/<name> (mode 0700)")
     .option("--new-recipient", "Allow attachments to a recipient that is not in the thread or on the mailbox's domain list")
     .option("--dry-run", "Check the options and files, print names and sizes, send nothing")

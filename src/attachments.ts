@@ -12,10 +12,17 @@ export const CONTENT_TYPES: Record<string, string> = {
   ".pdf": "application/pdf",
   ".png": "image/png",
   ".jpg": "image/jpeg",
+  // Board #53: the server checks each of these by content too.
+  ".gif": "image/gif",
+  ".mp3": "audio/mpeg",
+  ".m4a": "audio/mp4",
+  ".wav": "audio/wav",
+  ".txt": "text/plain",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 };
 export const MAX_FILES = 5;
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
-export const MAX_TOTAL_BYTES = 15 * 1024 * 1024;
+export const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 export const MAX_RECIPIENTS = 2;
 const OUTBOX_NAME = /^[a-z0-9_-]{1,64}$/;
 
@@ -103,7 +110,7 @@ export function inspectAttachments(paths: string[], outbox?: string): Attachment
     return { path: full, filename, contentType, bytes: stat.size };
   });
   if (total > MAX_TOTAL_BYTES) {
-    throw new Error(`attachments total ${total} bytes; the limit is ${MAX_TOTAL_BYTES} (15 MB) per mail; nothing was sent`);
+    throw new Error(`attachments total ${total} bytes; the limit is ${MAX_TOTAL_BYTES} (20 MB) per mail; nothing was sent`);
   }
   return infos;
 }
@@ -121,16 +128,18 @@ function guardCheckPath(): string {
   return process.env.MAILBOXES_GUARD_CHECK || join(homedir(), "projects", "hq", "bin", "guard-check");
 }
 
-// The text parts of a file: the csv text, or the xlsx shared strings and
-// sheet cell text. Other types have no text part here.
+// The text parts of a file: the csv or txt text, the xlsx shared strings
+// and sheet cell text, or the docx XML parts (document, headers, footers,
+// notes, comments). Other types have no text part here.
 function textParts(info: AttachmentInfo): Buffer | null {
   const ext = extname(info.path).toLowerCase();
-  if (ext === ".csv") return readFileSync(info.path);
-  if (ext !== ".xlsx") return null;
-  const run = spawnSync("unzip", ["-p", info.path, "xl/sharedStrings.xml", "xl/worksheets/*.xml"], { maxBuffer: 128 * 1024 * 1024 });
+  if (ext === ".csv" || ext === ".txt") return readFileSync(info.path);
+  const patterns = ext === ".xlsx" ? ["xl/sharedStrings.xml", "xl/worksheets/*.xml"] : ext === ".docx" ? ["word/*.xml"] : null;
+  if (!patterns) return null;
+  const run = spawnSync("unzip", ["-p", info.path, ...patterns], { maxBuffer: 128 * 1024 * 1024 });
   // 11 = one pattern matched nothing (a workbook can have no shared strings).
   if (run.error || (run.status !== 0 && run.status !== 11)) {
-    throw new Error(`attachment ${info.filename}: the spreadsheet text could not be read for the secret check; nothing was sent`);
+    throw new Error(`attachment ${info.filename}: the document text could not be read for the secret check; nothing was sent`);
   }
   return run.stdout;
 }
@@ -171,6 +180,8 @@ export function buildForm(fields: Record<string, string | undefined>, infos: Att
   }
   return form;
 }
+
+export const ALLOWED_TYPES_HELP = ".pdf .png .jpg .gif .mp3 .m4a .wav .csv .txt .docx .xlsx; 5 files, 10 MB each, 20 MB total";
 
 // Names and sizes only, for --dry-run.
 export function describe(infos: AttachmentInfo[]): Array<{ filename: string; content_type: string; bytes: number }> {

@@ -180,6 +180,21 @@ is not committed). Tests: `npm test` (node's built-in runner, stubbed fetch).
 `poll --to E164 [--question TEXT] --option A --option B [...]` sends a Linq
 poll through a mailbox key (Linq mailboxes only; 2 to 10 options).
 
+## Reply-all (`reply-all`, mailbox key)
+
+The server builds the recipients from the stored inbound message and computes the approval value; the CLI never computes it and never sends without the value a person approved.
+
+```bash
+mailboxes-cli reply-all MESSAGE_ID --body "Thanks, all." --preview                 # prints to, cc, subject and approve.send_with
+mailboxes-cli reply-all MESSAGE_ID --body "Thanks, all." --expect-sha8 SHA8        # text only
+mailboxes-cli reply-all MESSAGE_ID --body "Clip attached." --outbox NAME --attach clip.mp3 --preview
+mailboxes-cli reply-all MESSAGE_ID --body "Clip attached." --outbox NAME --attach clip.mp3 --expect-sha256 FULL64HEX
+```
+
+- Text only: the send needs `--expect-sha8` (the preview's `recipients_sha8`).
+- With files: the preview lists each file (name, type, bytes, sha8) and returns `approval_sha256`, which covers the recipients, the text and every file. The send needs `--expect-sha256` with that FULL 64-hex value (the card may show its first 8 hex to the approver). The body and files must be exactly the previewed ones; any change is refused by the server.
+- The same file rules as `--attach` below (outbox folder, types, sizes, secret check) run before any request. Files on reply-all are the only way to send files from a dkim_aligned mailbox (194), and only after a person approves the preview.
+
 ## Email attachments (`--attach`)
 
 `send` and `reply` take `--attach` (repeat), for EMAIL only, with the user key. Files come from the tab's outbox folder only.
@@ -190,9 +205,9 @@ mailboxes-cli reply THREAD_ID --mailbox 174 --to "person@example.com" --body "At
 ```
 
 - `--outbox NAME` is required with `--attach`. The folder is `~/tmp/mail-outbox/NAME` (NAME is a-z 0-9 _ -). It must exist, be a real directory (not a symlink) owned by you, with mode 0700. The folder above it must not be group or world writable. `--attach` is a bare file name in that folder, or a full path into it. After realpath the file must still be inside the folder; a symlink anywhere on the way is refused.
-- Allowed types: .xlsx .csv .pdf .png .jpg (case-insensitive). Regular files only. At most 5 files, 10 MB per file, 15 MB per mail. The CLI refuses before any request.
+- Allowed types (board #53): .pdf .png .jpg .gif .mp3 .m4a .wav .csv .txt .docx .xlsx (case-insensitive). Regular files only. At most 5 files, 10 MB per file, 20 MB per mail. The CLI refuses before any request. The server checks every type by its content (magic bytes; docx/xlsx zip rules).
 - One or two recipients (to and cc together). No `--bcc` with files.
 - A recipient that is not in the thread (reply) or on the mailbox's domain list needs `--new-recipient`. The server decides; the flag only says you mean it.
-- Secret check: the text parts (csv text; xlsx shared strings and sheet cell text) go through `~/projects/hq/bin/guard-check scrub` (env `MAILBOXES_GUARD_CHECK` overrides the path). A hit refuses with a count only, never the value. If guard-check cannot run, the send is refused. PDF, PNG and JPG are not text-scanned here (the server scans csv and xlsx text for key prefixes too). Note: guard-check passes everything when its hash table is missing.
+- Secret check: the text parts (csv and txt text; xlsx shared strings and sheet cell text; docx word/*.xml parts) go through `~/projects/hq/bin/guard-check scrub` (env `MAILBOXES_GUARD_CHECK` overrides the path). A hit refuses with a count only, never the value. If guard-check cannot run, the send is refused. PDF, PNG and JPG are not text-scanned here (the server scans csv and xlsx text for key prefixes too). Note: guard-check passes everything when its hash table is missing.
 - `--dry-run` checks everything (including the secret check) and prints file names, types and sizes only; it sends nothing.
 - The server accepts files only for mailboxes with `allow_outbound_attachments` on, and never on a Bailey mailbox. It checks the type by content, refuses xlsx formulas, macros and links, csv cells that start with = + - @ or a tab (a plain number may start with -), and PDF script or launch actions (raw bytes only: a keyword inside a compressed object stream is not seen). It keeps each sent file encrypted with the message.

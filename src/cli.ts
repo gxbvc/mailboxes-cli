@@ -9,6 +9,7 @@ import { registerReplyCommand } from "./commands/reply.js";
 import { registerActionsCommands } from "./commands/actions.js";
 import { registerPollCommand } from "./commands/poll.js";
 import { registerActCommand } from "./commands/act.js";
+import { registerReplyAllCommand } from "./commands/reply-all.js";
 
 const program = new Command();
 program
@@ -26,4 +27,5 @@ registerReplyCommand(program);
 registerActionsCommands(program);
 registerPollCommand(program);
 registerActCommand(program);
+registerReplyAllCommand(program);
 program.parse();

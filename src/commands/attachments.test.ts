@@ -129,7 +129,7 @@ test("a reply with files posts multipart to the reply endpoint", async () => {
 });
 
 test("a file type outside the allow-list is refused before any request", async () => {
-  for (const name of ["x.exe", "x.xlsm", "x.zip", "x.jpeg", "x.txt", "noext"]) {
+  for (const name of ["x.exe", "x.xlsm", "x.zip", "x.jpeg", "x.html", "x.svg", "x.rar", "x.docm", "noext"]) {
     calls = [];
     await refused([...base, "--attach", file(name)], /type not allowed/);
   }
@@ -190,7 +190,7 @@ test("a file in a plain sub-folder of the outbox is accepted", async () => {
   assert.equal(calls.length, 1);
 });
 
-test("10 MB per file and 15 MB per mail; 5 files at most", async () => {
+test("10 MB per file and 20 MB per mail; 5 files at most", async () => {
   const big = join(outbox, "big.pdf");
   writeFileSync(big, "");
   truncateSync(big, 10 * 1024 * 1024 + 1);
@@ -208,8 +208,10 @@ test("10 MB per file and 15 MB per mail; 5 files at most", async () => {
   truncateSync(a, 10 * 1024 * 1024);
   const b = join(outbox, "six.pdf");
   writeFileSync(b, "");
-  truncateSync(b, 5 * 1024 * 1024 + 1);
-  await refused([...base, "--attach", a, "--attach", b], /15728640.*per mail/);
+  truncateSync(b, 10 * 1024 * 1024);
+  const c = join(outbox, "one.pdf");
+  writeFileSync(c, "x");
+  await refused([...base, "--attach", a, "--attach", b, "--attach", c], /20971520.*per mail/);
 
   const six = Array.from({ length: 6 }, (_, i) => ["--attach", file(`f${i}.csv`)]).flat();
   await refused([...base, ...six], /at most 5/);

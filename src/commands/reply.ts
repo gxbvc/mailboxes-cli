@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { createClient } from "../api.js";
 import { success, error } from "../output.js";
-import { buildForm, checkRecipients, collect, describe, guardScan, inspectAttachments } from "../attachments.js";
+import { ALLOWED_TYPES_HELP, buildForm, checkRecipients, collect, describe, guardScan, inspectAttachments } from "../attachments.js";
 
 export function registerReplyCommand(program: Command): void {
   program
@@ -12,7 +12,7 @@ export function registerReplyCommand(program: Command): void {
     .requiredOption("--to <address>", "Recipient email or E.164 phone")
     .requiredOption("--body <body>", "Reply body")
     .option("--subject <subject>", "Custom subject (email only; default: auto-generated Re: ...)")
-    .option("--attach <path>", "Attach a file to an email reply (repeat; .xlsx .csv .pdf .png .jpg; 5 files, 10 MB each, 15 MB total; from your outbox)", collect)
+    .option("--attach <path>", `Attach a file to an email reply (repeat; ${ALLOWED_TYPES_HELP}; from your outbox)`, collect)
     .option("--outbox <name>", "Your outbox folder name: files must be in ~/tmp/mail-outbox/<name> (mode 0700)")
     .option("--new-recipient", "Allow attachments to a recipient that is not in the thread or on the mailbox's domain list")
     .option("--dry-run", "Check the options and files, print names and sizes, send nothing")
