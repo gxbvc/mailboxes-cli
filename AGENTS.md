@@ -191,6 +191,7 @@ mailboxes-cli reply-all MESSAGE_ID --body "Clip attached." --outbox NAME --attac
 mailboxes-cli reply-all MESSAGE_ID --body "Clip attached." --outbox NAME --attach clip.mp3 --expect-sha256 FULL64HEX
 ```
 
+- The send runs only after the approver's yes on a card that shows the preview (recipients, text and every file). An agent never previews and sends in one turn on its own word (Security, Nov 3).
 - Text only: the send needs `--expect-sha8` (the preview's `recipients_sha8`).
 - With files: the preview lists each file (name, type, bytes, sha8) and returns `approval_sha256`, which covers the recipients, the text and every file. The send needs `--expect-sha256` with that FULL 64-hex value (the card may show its first 8 hex to the approver). The body and files must be exactly the previewed ones; any change is refused by the server.
 - The same file rules as `--attach` below (outbox folder, types, sizes, secret check) run before any request. Files on reply-all are the only way to send files from a dkim_aligned mailbox (194), and only after a person approves the preview.
