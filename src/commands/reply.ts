@@ -16,6 +16,7 @@ export function registerReplyCommand(program: Command): void {
     .option("--outbox <name>", "Your outbox folder name: files must be in ~/tmp/mail-outbox/<name> (mode 0700)")
     .option("--new-recipient", "Allow attachments to a recipient that is not in the thread or on the mailbox's domain list")
     .option("--reply-to <message_id>", "iMessage inline reply: quote one message of THIS thread (direct 1:1 only; groups, SMS and email refuse)")
+    .option("--effect <style>", "iMessage effect (e.g. slam, gentle, confetti; direct Sendblue threads only, the server checks the name)")
     .option("--dry-run", "Check the options and files, print names and sizes, send nothing")
     .action(async (threadId, opts) => {
       try {
@@ -38,6 +39,7 @@ export function registerReplyCommand(program: Command): void {
           if (!/^\d+$/.test(String(opts.replyTo))) error("--reply-to takes a numeric message id");
           payload.reply_to_message_id = String(opts.replyTo);
         }
+        if (opts.effect) payload.effect = String(opts.effect);
         if (attachments.length) {
           checkRecipients([opts.to]);
           guardScan(attachments);

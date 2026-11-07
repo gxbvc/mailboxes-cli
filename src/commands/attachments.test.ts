@@ -123,6 +123,11 @@ test("reply --reply-to sends reply_to_message_id on the user-key reply endpoint"
   assert.deepEqual(JSON.parse(calls[0].body), { to: "+15551234567", body: "answer", mailbox_id: "180", reply_to_message_id: "4242" });
 });
 
+test("reply --effect sends effect on the user-key reply endpoint", async () => {
+  await run(["reply", "t1", "--mailbox", "180", "--to", "+15551234567", "--body", "boom", "--effect", "slam", "--reply-to", "7"]);
+  assert.deepEqual(JSON.parse(calls[0].body), { to: "+15551234567", body: "boom", mailbox_id: "180", reply_to_message_id: "7", effect: "slam" });
+});
+
 test("reply --reply-to refuses a non-numeric id and sends nothing", async () => {
   await refused(["reply", "t1", "--mailbox", "180", "--to", "+15551234567", "--body", "x", "--reply-to", "abc"], /numeric message id/);
 });
