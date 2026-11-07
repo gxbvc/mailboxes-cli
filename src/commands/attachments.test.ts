@@ -116,6 +116,17 @@ test("a send without files stays JSON", async () => {
   assert.deepEqual(JSON.parse(calls[0].body), { to: "a@example.com", body: "hello", mailbox_id: "174", subject: "S" });
 });
 
+test("reply --reply-to sends reply_to_message_id on the user-key reply endpoint", async () => {
+  await run(["reply", "imessage:180:+15551234567", "--mailbox", "180", "--to", "+15551234567", "--body", "answer", "--reply-to", "4242"]);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url.endsWith("/reply"), true);
+  assert.deepEqual(JSON.parse(calls[0].body), { to: "+15551234567", body: "answer", mailbox_id: "180", reply_to_message_id: "4242" });
+});
+
+test("reply --reply-to refuses a non-numeric id and sends nothing", async () => {
+  await refused(["reply", "t1", "--mailbox", "180", "--to", "+15551234567", "--body", "x", "--reply-to", "abc"], /numeric message id/);
+});
+
 test("a reply with files posts multipart to the reply endpoint", async () => {
   await run(["reply", "thread-1", "--mailbox", "174", "--to", "a@example.com", "--body", "hi", "--outbox", "tab1", "--attach", file("a.pdf"), "--attach", file("b.png"), "--attach", file("c.jpg")]);
   assert.equal(calls[0].url.endsWith("/api/v1/threads/thread-1/reply"), true);

@@ -15,6 +15,7 @@ export function registerReplyCommand(program: Command): void {
     .option("--attach <path>", `Attach a file to an email reply (repeat; ${ALLOWED_TYPES_HELP}; from your outbox)`, collect)
     .option("--outbox <name>", "Your outbox folder name: files must be in ~/tmp/mail-outbox/<name> (mode 0700)")
     .option("--new-recipient", "Allow attachments to a recipient that is not in the thread or on the mailbox's domain list")
+    .option("--reply-to <message_id>", "iMessage inline reply: quote one message of THIS thread (direct 1:1 only; groups, SMS and email refuse)")
     .option("--dry-run", "Check the options and files, print names and sizes, send nothing")
     .action(async (threadId, opts) => {
       try {
@@ -33,6 +34,10 @@ export function registerReplyCommand(program: Command): void {
           payload.from = opts.from;
         }
         if (opts.subject) payload.subject = opts.subject;
+        if (opts.replyTo) {
+          if (!/^\d+$/.test(String(opts.replyTo))) error("--reply-to takes a numeric message id");
+          payload.reply_to_message_id = String(opts.replyTo);
+        }
         if (attachments.length) {
           checkRecipients([opts.to]);
           guardScan(attachments);
