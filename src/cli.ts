@@ -11,6 +11,7 @@ import { registerPollCommand } from "./commands/poll.js";
 import { registerActCommand } from "./commands/act.js";
 import { registerReplyAllCommand } from "./commands/reply-all.js";
 import { registerAttachmentsCommand } from "./commands/attachments-get.js";
+import { registerThreadTypingCommand } from "./commands/thread-typing.js";
 
 const program = new Command();
 program
@@ -30,4 +31,5 @@ registerPollCommand(program);
 registerActCommand(program);
 registerReplyAllCommand(program);
 registerAttachmentsCommand(program);
+registerThreadTypingCommand(program);
 program.parse();
