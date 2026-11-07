@@ -38,6 +38,14 @@ export function registerThreadsCommand(program: Command): void {
         const client = createClient();
         const data = await client.get(`/api/v1/threads/${threadId}`);
         success(data);
+        // THEIR typing (mailboxes PR: Sendblue typing_indicator webhook).
+        // A human line on stderr; the JSON on stdout stays machine-readable.
+        const typing = data?.thread?.their_typing;
+        if (typing && typeof typing.at === "string") {
+          const age = Math.max(0, Math.round((Date.now() - new Date(typing.at).getTime()) / 1000));
+          const label = typing.is_typing ? "typing now" : `stopped typing ${age}s ago`;
+          console.error(`their_typing: ${label}`);
+        }
       } catch (e: any) {
         error(e.message);
       }
