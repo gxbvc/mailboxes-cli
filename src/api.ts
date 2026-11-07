@@ -62,6 +62,29 @@ export class MailboxesAPI {
   async delete(path: string): Promise<any> {
     return this.request("DELETE", path);
   }
+
+  // Bytes of one attachment or voice memo (mailboxes PR 36). The key goes
+  // only to the configured API host: a redirect is refused, never followed.
+  async download(path: string, maxBytes: number): Promise<{ data: Buffer; contentType: string }> {
+    if (!/^\/api\/v1\/(mailbox\/)?messages\/\d+\/(attachments\/\d+|voice_memo)$/.test(path)) {
+      throw new Error("refused: not an attachment path");
+    }
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${this.apiKey}` },
+      redirect: "manual",
+    });
+    if (response.status >= 300 && response.status < 400) throw new Error(`refused: redirect (HTTP ${response.status})`);
+    if (!response.ok) {
+      const json = await response.json().catch(() => null);
+      throw new Error(json?.error || `HTTP ${response.status}`);
+    }
+    const declared = Number(response.headers.get("content-length") || 0);
+    if (declared > maxBytes) throw new Error(`refused: larger than ${maxBytes} bytes`);
+    const data = Buffer.from(await response.arrayBuffer());
+    if (data.length > maxBytes) throw new Error(`refused: larger than ${maxBytes} bytes`);
+    return { data, contentType: (response.headers.get("content-type") || "").split(";")[0] };
+  }
 }
 
 export function createClient(apiKeyOverride?: string): MailboxesAPI {

@@ -10,6 +10,7 @@ import { registerActionsCommands } from "./commands/actions.js";
 import { registerPollCommand } from "./commands/poll.js";
 import { registerActCommand } from "./commands/act.js";
 import { registerReplyAllCommand } from "./commands/reply-all.js";
+import { registerAttachmentsCommand } from "./commands/attachments-get.js";
 
 const program = new Command();
 program
@@ -28,4 +29,5 @@ registerActionsCommands(program);
 registerPollCommand(program);
 registerActCommand(program);
 registerReplyAllCommand(program);
+registerAttachmentsCommand(program);
 program.parse();
