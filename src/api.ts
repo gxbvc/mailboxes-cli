@@ -69,6 +69,10 @@ export class MailboxesAPI {
     if (!/^\/api\/v1\/(mailbox\/)?messages\/\d+\/(attachments\/\d+|voice_memo)$/.test(path)) {
       throw new Error("refused: not an attachment path");
     }
+    // The key is only ever sent over https (Security, Nov 7).
+    if (!/^https:\/\/[^/]+$/i.test(this.baseUrl.replace(/\/+$/, ""))) {
+      throw new Error("refused: the API URL is not https");
+    }
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: "GET",
       headers: { Authorization: `Bearer ${this.apiKey}` },
@@ -81,8 +85,24 @@ export class MailboxesAPI {
     }
     const declared = Number(response.headers.get("content-length") || 0);
     if (declared > maxBytes) throw new Error(`refused: larger than ${maxBytes} bytes`);
-    const data = Buffer.from(await response.arrayBuffer());
-    if (data.length > maxBytes) throw new Error(`refused: larger than ${maxBytes} bytes`);
+    // Stream with a running count, so a response without Content-Length
+    // cannot fill memory past the cap (Security, Nov 7).
+    const chunks: Buffer[] = [];
+    let total = 0;
+    if (response.body) {
+      const reader = response.body.getReader();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.length;
+        if (total > maxBytes) {
+          await reader.cancel().catch(() => {});
+          throw new Error(`refused: larger than ${maxBytes} bytes`);
+        }
+        chunks.push(Buffer.from(value));
+      }
+    }
+    const data = Buffer.concat(chunks);
     return { data, contentType: (response.headers.get("content-type") || "").split(";")[0] };
   }
 }

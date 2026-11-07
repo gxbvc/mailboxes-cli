@@ -87,6 +87,33 @@ test("non-numeric ids are refused before any call", async () => {
   assert.equal(calls.length, 0);
 });
 
+test("an http API URL is refused before the key is sent", async () => {
+  process.env.MAILBOXES_API_URL = "http://mailboxes.example.test";
+  try {
+    await assert.rejects(run(["attachments", "get", "12", "34", "--out", join(root, "h.png")]), Exit);
+    assert.equal(calls.length, 0);
+    assert.match(stderr.join("\n"), /not https/);
+  } finally {
+    process.env.MAILBOXES_API_URL = "https://mailboxes.example.test";
+  }
+});
+
+test("a body past the cap with no Content-Length is refused while streaming", async () => {
+  const big = 50 * 1024 * 1024 + 1;
+  reply = () => new Response(new ReadableStream({
+    start(controller) {
+      const chunk = new Uint8Array(1024 * 1024);
+      let sent = 0;
+      while (sent < big) { controller.enqueue(chunk); sent += chunk.length; }
+      controller.close();
+    },
+  }), { status: 200 });
+  const out = join(root, "big.bin");
+  await assert.rejects(run(["attachments", "get", "12", "34", "--out", out]), Exit);
+  assert.match(stderr.join("\n"), /larger than/);
+  assert.throws(() => statSync(out));
+});
+
 test("a 404 is an error and writes nothing", async () => {
   reply = () => new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
   const out = join(root, "nf.png");
