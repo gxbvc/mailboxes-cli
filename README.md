@@ -76,6 +76,31 @@ mailboxes-cli threads unread <thread_id>       # Mark thread as unread
 mailboxes-cli threads move-to-inbox <thread_id> # Move thread back to inbox
 ```
 
+### Act (mailbox key)
+
+```bash
+# React to one stored message (classic tapback or one emoji; - removes)
+mailboxes-cli act <message_id> react love
+mailboxes-cli act <message_id> unreact --reaction love
+
+# 1:1 thread actions
+mailboxes-cli act read --thread <thread_id>
+mailboxes-cli act typing --thread <thread_id> [--stop]
+mailboxes-cli act location-request --thread <thread_id>
+
+# Sendblue group thread actions (the reviewed staff group only; the
+# server checks). The name is 1-100 characters of plain text.
+mailboxes-cli act rename --thread <group_thread_id> --name "The Name"
+mailboxes-cli act leave --thread <group_thread_id>
+
+# Set the group photo: JPEG/PNG/GIF, at most 5 MB. The photo becomes
+# visible to every group member, and Sendblue serves it from an unlisted
+# public URL: only a plain team image, never a person's photo without
+# that person's yes, never client data. The server re-encodes it and
+# strips the metadata, and refuses anything but the reviewed staff group.
+mailboxes-cli act group-photo --thread <group_thread_id> --file team.png
+```
+
 ### Messages
 
 ```bash
